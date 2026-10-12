@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ImaraWorks · My Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1E3A5F;
+    --navy-dark: #16293F;
+    --amber: #C9812B;
+    --amber-dark: #A6691F;
+    --bg: #F6F7F5;
+    --surface: #FFFFFF;
+    --border: #E1E4E1;
+    --text: #1F2933;
+    --text-soft: #5A6472;
+    --status-pending-bg: #FBF0DF;
+    --status-pending-text: #8A5A15;
+    --status-approved-bg: #E4F1EA;
+    --status-approved-text: #2F7D5B;
+    --status-rejected-bg: #F7E7E2;
+    --status-rejected-text: #B3492B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .topbar {
+    background: var(--navy);
+    color: #fff;
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .topbar .brand {
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.2px;
+  }
+
+  .topbar .brand span {
+    color: var(--amber);
+  }
+
+  .topbar .who {
+    font-size: 13px;
+    color: #C7D2DE;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .page-head h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    padding: 10px 18px;
+  }
+
+  .btn-primary {
+    background: var(--amber);
+    color: #fff;
+  }
+
+  .btn-primary:hover { background: var(--amber-dark); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-soft);
+    border: 1px solid var(--border);
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .panel h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  .field-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-soft);
+    flex: 1;
+    margin-bottom: 14px;
+  }
+
+  .field-row label { margin-bottom: 0; }
+
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+  }
+
+  textarea { resize: vertical; min-height: 60px; }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--text-soft);
+    font-weight: 600;
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .badge-pending { background: var(--status-pending-bg); color: var(--status-pending-text); }
+  .badge-approved { background: var(--status-approved-bg); color: var(--status-approved-text); }
+  .badge-rejected { background: var(--status-rejected-bg); color: var(--status-rejected-text); }
+
+  #empty-state {
+    color: var(--text-soft);
+    font-size: 14px;
+    padding: 24px 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
+  <div class="who">Alice Mwangi · Employee</div>
+</header>
+
+<main class="container">
+  <div class="page-head">
+    <h1>My payment requests</h1>
+    <button class="btn-primary" id="toggle-form-btn">+ New request</button>
+  </div>
+
+  <section class="panel" id="new-request-panel" hidden>
+    <h2>New request</h2>
+    <form id="request-form">
+      <div class="field-row">
+        <label>Vendor
+          <input name="vendor" required>
+        </label>
+        <label>Amount (KES)
+          <input name="amount" type="number" min="1" step="0.01" required>
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Invoice reference
+          <input name="invoice_ref" required>
+        </label>
+        <label>Project
+          <input name="project">
+        </label>
+      </div>
+      <label>Payment method
+        <select name="payment_method">
+          <option value="mpesa">M-Pesa</option>
+          <option value="bank">Bank transfer</option>
+        </select>
+      </label>
+      <label>Reason for payment
+        <textarea name="reason" required></textarea>
+      </label>
+      <label>Supporting notes
+        <textarea name="notes"></textarea>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Submit request</button>
+        <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Amount (KES)</th>
+          <th>Invoice</th>
+          <th>Status</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody id="requests-body"></tbody>
+    </table>
+    <p id="empty-state" hidden>No requests yet — submit your first one above.</p>
+  </section>
+</main>
+
+<script>
+  // ---- PLACEHOLDER DATA ----
+  // Remove this block once Tamira's endpoint is ready, and use loadRequests() below instead.
+  let requests = [
+    { vendor: "Metro Hardware Ltd.", amount: 24500, invoice_ref: "INV-1032", status: "approved", date: "2026-09-14" },
+    { vendor: "SwiftHaul Logistics", amount: 67000, invoice_ref: "SH-820", status: "pending", date: "2026-09-18" },
+    { vendor: "Apex Electricals", amount: 148000, invoice_ref: "AE-4103", status: "rejected", date: "2026-09-10" },
+  ];
+
+  const badgeClass = {
+    pending: "badge-pending",
+    approved: "badge-approved",
+    rejected: "badge-rejected",
+    paid: "badge-approved",
+    failed: "badge-rejected",
+    processing: "badge-pending",
+  };
+
+  // Escapes text before it goes into innerHTML, so a vendor name like "<img onerror=...>" is shown
+  // as plain text instead of running as code. Every value that comes from data needs this.
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function renderRequests() {
+    const body = document.getElementById("requests-body");
+    const emptyState = document.getElementById("empty-state");
+    body.innerHTML = "";
+
+    if (requests.length === 0) {
+      emptyState.hidden = false;
+      return;
+    }
+    emptyState.hidden = true;
+
+    requests.forEach(r => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${esc(r.vendor)}</td>
+        <td>${Number(r.amount).toLocaleString()}</td>
+        <td>${esc(r.invoice_ref)}</td>
+        <td><span class="badge ${badgeClass[r.status] || ''}">${esc(r.status)}</span></td>
+        <td>${esc(r.date)}</td>
+      `;
+      body.appendChild(row);
+    });
+  }
+
+  // ---- SWAP-IN POINT: replace renderRequests() call below with this once the API exists ----
+  // async function loadRequests() {
+  //   const response = await fetch('/api/requests/', {
+  //     headers: { 'Authorization': 'Token ' + yourToken }
+  //   });
+  //   requests = await response.json();
+  //   renderRequests();
+  // }
+  // loadRequests();
+
+  renderRequests();
+
+  // ---- Form toggle ----
+  const panel = document.getElementById("new-request-panel");
+  document.getElementById("toggle-form-btn").addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+  });
+  document.getElementById("cancel-btn").addEventListener("click", () => {
+    panel.hidden = true;
+  });
+
+  // ---- Form submit ----
+  document.getElementById("request-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const newRequest = {
+      vendor: form.vendor.value,
+      amount: form.amount.value,
+      invoice_ref: form.invoice_ref.value,
+      project: form.project.value,
+      payment_method: form.payment_method.value,
+      reason: form.reason.value,
+      notes: form.notes.value,
+      status: "pending",
+      date: new Date().toISOString().slice(0, 10),
+    };
+
+    // ---- SWAP-IN POINT: replace the two lines below with a POST fetch once the API exists ----
+    // const response = await fetch('/api/requests/', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json', 'Authorization': 'Token ' + yourToken },
+    //   body: JSON.stringify(newRequest)
+    // });
+    // requests.unshift(await response.json());
+
+    requests.unshift(newRequest);
+    renderRequests();
+    form.reset();
+    panel.hidden = true;
+  });
+</script>
+
+</body>
+</html>
