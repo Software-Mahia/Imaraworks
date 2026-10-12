@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ImaraWorks · Finance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1E3A5F; --amber: #C9812B; --amber-dark: #A6691F;
+    --bg: #F6F7F5; --surface: #FFFFFF; --border: #E1E4E1;
+    --text: #1F2933; --text-soft: #5A6472; --danger: #B3492B;
+    --pending-bg: #FBF0DF; --pending-text: #8A5A15;
+    --ok-bg: #E4F1EA; --ok-text: #2F7D5B;
+    --bad-bg: #F7E7E2; --bad-text: #B3492B;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  .topbar { background: var(--navy); color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar .brand { font-weight: 700; font-size: 16px; }
+  .topbar .brand span { color: var(--amber); }
+  .topbar .who { font-size: 13px; color: #C7D2DE; }
+  .container { max-width: 1040px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 22px; margin: 0 0 24px; }
+  h2 { font-size: 16px; margin: 32px 0 12px; }
+  .hint { font-size: 13px; color: var(--text-soft); margin: -6px 0 12px; }
+
+  button { font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; padding: 8px 14px; }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--amber); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--amber-dark); }
+  .btn-secondary { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
+  .btn-reject { background: #fff; color: var(--danger); border: 1px solid var(--border); }
+  .actions { display: flex; gap: 8px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; }
+  .stats { display: flex; }
+  .stat { flex: 1; padding: 0 24px; border-left: 1px solid var(--border); }
+  .stat:first-child { padding-left: 0; border-left: none; }
+  .stat .num { font-size: 26px; font-weight: 700; }
+  .stat .label { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
+  .by-project { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-soft); }
+  .by-project b { color: var(--text); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--text-soft); font-weight: 600; padding: 0 12px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .sub { display: block; font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+  .nowrap { white-space: nowrap; }
+  .late { color: var(--pending-text); font-weight: 600; }
+  .own-note { font-size: 12px; color: var(--text-soft); }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .badge-pending { background: var(--pending-bg); color: var(--pending-text); }
+  .badge-ok { background: var(--ok-bg); color: var(--ok-text); }
+  .badge-bad { background: var(--bad-bg); color: var(--bad-text); }
+
+  .filters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-soft); }
+  input, select, textarea { font-family: inherit; font-size: 14px; color: var(--text); padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  .empty { color: var(--text-soft); font-size: 14px; text-align: center; padding: 20px 0 4px; margin: 0; }
+
+  #banner { background: var(--ok-bg); color: var(--ok-text); border-radius: 8px; padding: 12px 18px; font-size: 14px; margin-bottom: 20px; }
+  #banner.error { background: var(--bad-bg); color: var(--bad-text); }
+
+  dialog { border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; max-width: 92vw; }
+  dialog::backdrop { background: rgba(31, 41, 51, 0.45); }
+  dialog h3 { font-size: 16px; margin: 0 0 6px; }
+  dialog p { font-size: 13px; color: var(--text-soft); margin: 0 0 14px; }
+  dialog textarea { width: 100%; min-height: 80px; resize: vertical; }
+  .dialog-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
+  <div class="who">Faith Njeri · Finance Officer</div>
+</header>
+
+<main class="container">
+  <h1>Finance</h1>
+  <div id="banner" role="status" hidden></div>
+
+  <section class="panel">
+    <div class="stats">
+      <div class="stat"><div class="num" id="stat-paid">0</div><div class="label">KES paid in total</div></div>
+      <div class="stat"><div class="num" id="stat-awaiting">0</div><div class="label">Requests awaiting approval</div></div>
+      <div class="stat"><div class="num" id="stat-failed">0</div><div class="label">Failed payments</div></div>
+    </div>
+    <div class="by-project" id="by-project"></div>
+  </section>
+
+  <h2>Needs your action</h2>
+  <p class="hint">Oldest first. Second approvals for requests above KES 50,000, payments ready to send, and failed payments to retry.</p>
+  <section class="panel">
+    <table>
+      <thead><tr><th>Request</th><th>Requested by</th><th>Amount (KES)</th><th>Waiting</th><th>Next step</th><th></th></tr></thead>
+      <tbody id="queue-body"></tbody>
+    </table>
+    <p class="empty" id="queue-empty" hidden>Nothing needs your action right now.</p>
+  </section>
+
+  <h2>All requests</h2>
+  <section class="panel">
+    <form class="filters" id="filters">
+      <label>Vendor <input name="vendor" placeholder="Any"></label>
+      <label>Requester <input name="requester" placeholder="Any"></label>
+      <label>Project
+        <select name="project"><option value="">Any</option><option>Westlands</option><option>Kilimani</option></select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option value="">Any</option>
+          <option value="pending_manager">Waiting on manager</option>
+          <option value="pending_finance">Waiting on Finance</option>
+          <option value="approved">Approved</option>
+          <option value="paid">Paid</option>
+          <option value="failed">Payment failed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </label>
+      <label>Payment method
+        <select name="method"><option value="">Any</option><option value="mpesa">M-Pesa</option><option value="bank">Bank transfer</option></select>
+      </label>
+      <label>From <input type="date" name="from"></label>
+      <label>To <input type="date" name="to"></label>
+      <label>&nbsp;<button type="reset" class="btn-secondary">Clear filters</button></label>
+    </form>
+    <table>
+      <thead><tr><th>Vendor</th><th>Requested by</th><th>Project</th><th>Amount (KES)</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <p class="empty" id="results-empty" hidden>No requests match these filters.</p>
+  </section>
+</main>
+
+<dialog id="reject-dialog">
+  <form id="reject-form">
+    <h3>Reject this request</h3>
+    <p id="reject-target"></p>
+    <textarea id="reject-reason" placeholder="Why is this being rejected? The requester will see this." required></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" id="reject-cancel">Cancel</button>
+      <button type="submit" class="btn-reject">Reject request</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  // ---- SETTINGS ----
+  // Placeholder: the real logged-in user will come from the API (a "who am I" endpoint).
+  const CURRENT_USER = "Faith Njeri";
+
+  // ---- PLACEHOLDER DATA ----
+  // Remove once the API exists and use loadRequests() below instead.
+  const daysAgo = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+
+  let requests = [
+    { id: 1,  vendor: "SwiftHaul Logistics",   amount: 67000,  invoice_ref: "SH-820",   project: "Westlands", requester: "Alice Mwangi", method: "bank",  status: "pending_finance", date: daysAgo(3) },
+    { id: 2,  vendor: "Apex Electricals",      amount: 148000, invoice_ref: "AE-4103",  project: "Kilimani",  requester: "Brian Otieno", method: "bank",  status: "pending_finance", date: daysAgo(5) },
+    { id: 3,  vendor: "Metro Hardware Ltd.",   amount: 24500,  invoice_ref: "INV-1032", project: "Westlands", requester: "Alice Mwangi", method: "mpesa", status: "approved",        date: daysAgo(1) },
+    { id: 4,  vendor: "PowerHire Kenya",       amount: 42000,  invoice_ref: "PH-912",   project: "Kilimani",  requester: "Brian Otieno", method: "bank",  status: "approved",        date: daysAgo(2) },
+    { id: 5,  vendor: "Prime Cement Supplies", amount: 18000,  invoice_ref: "PC-2201",  project: "Kilimani",  requester: "Carol Wanjiku", method: "mpesa", status: "failed",         date: daysAgo(4), fail_reason: "Provider unavailable" },
+    { id: 6,  vendor: "BlueLine Plumbing",     amount: 31000,  invoice_ref: "BL-77",    project: "Westlands", requester: "Alice Mwangi", method: "bank",  status: "paid",            date: daysAgo(8) },
+    { id: 7,  vendor: "Metro Hardware Ltd.",   amount: 12800,  invoice_ref: "INV-0998", project: "Kilimani",  requester: "Brian Otieno", method: "mpesa", status: "paid",            date: daysAgo(12) },
+    { id: 8,  vendor: "Apex Electricals",      amount: 55000,  invoice_ref: "AE-4088",  project: "Westlands", requester: "Alice Mwangi", method: "bank",  status: "paid",            date: daysAgo(15) },
+    { id: 9,  vendor: "SwiftHaul Logistics",   amount: 9500,   invoice_ref: "SH-801",   project: "Kilimani",  requester: "Alice Mwangi", method: "mpesa", status: "rejected",        date: daysAgo(6) },
+    { id: 10, vendor: "Prime Cement Supplies", amount: 72000,  invoice_ref: "PC-2230",  project: "Westlands", requester: "Faith Njeri",  method: "bank",  status: "pending_finance", date: daysAgo(1) },
+    { id: 11, vendor: "PowerHire Kenya",       amount: 26000,  invoice_ref: "PH-931",   project: "Westlands", requester: "Brian Otieno", method: "mpesa", status: "pending_manager", date: daysAgo(0) },
+  ];
+
+  // ---- HELPERS ----
+  // Escapes text before it goes into innerHTML, so a vendor name like "<script>" can't run as code.
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = n => Number(n).toLocaleString();
+
+  const STATUS = {
+    pending_manager: { label: "Waiting on manager", cls: "badge-pending" },
+    pending_finance: { label: "Waiting on Finance", cls: "badge-pending" },
+    approved:        { label: "Approved",           cls: "badge-ok" },
+    paid:            { label: "Paid",               cls: "badge-ok" },
+    failed:          { label: "Payment failed",     cls: "badge-bad" },
+    rejected:        { label: "Rejected",           cls: "badge-bad" },
+  };
+  const badge = s => `<span class="badge ${STATUS[s].cls}">${STATUS[s].label}</span>`;
+  const METHOD = { mpesa: "M-Pesa", bank: "Bank transfer" };
+
+  function waiting(dateStr) {
+    const d = Math.floor((Date.now() - new Date(dateStr)) / 864e5);
+    if (d < 1) return { text: "Today", late: false };
+    return { text: d + (d === 1 ? " day" : " days"), late: d >= 3 };
+  }
+
+  function showBanner(message, isError) {
+    const b = document.getElementById("banner");
+    b.textContent = message;
+    b.className = isError ? "error" : "";
+    b.hidden = false;
+  }
+
+  // ---- SUMMARY ----
+  function renderSummary() {
+    const paid = requests.filter(r => r.status === "paid");
+    document.getElementById("stat-paid").textContent = money(paid.reduce((t, r) => t + r.amount, 0));
+    document.getElementById("stat-awaiting").textContent = requests.filter(r => r.status === "pending_manager" || r.status === "pending_finance").length;
+    document.getElementById("stat-failed").textContent = requests.filter(r => r.status === "failed").length;
+
+    const byProject = {};
+    paid.forEach(r => { byProject[r.project] = (byProject[r.project] || 0) + r.amount; });
+    const parts = Object.entries(byProject).map(([p, t]) => `<b>${esc(p)}</b> KES ${money(t)}`);
+    document.getElementById("by-project").innerHTML = "Paid by project: " + (parts.join("&nbsp;&nbsp;&nbsp;") || "nothing yet");
+  }
+
+  // ---- ACTION QUEUE ----
+  function renderQueue() {
+    const body = document.getElementById("queue-body");
+    body.innerHTML = "";
+    const todo = requests
+      .filter(r => ["pending_finance", "approved", "failed"].includes(r.status))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    document.getElementById("queue-empty").hidden = todo.length > 0;
+
+    todo.forEach(r => {
+      const w = waiting(r.date);
+      const isOwn = r.requester === CURRENT_USER;
+      let next = "", actions = "";
+
+      if (r.status === "pending_finance") {
+        next = "Second approval";
+        // NOTE: blocking your own request here is only feedback. The backend must enforce it too.
+        actions = isOwn
+          ? `<span class="own-note">You submitted this, so another Finance Officer needs to approve it.</span>`
+          : `<div class="actions">
+               <button class="btn-primary" data-action="approve" data-id="${r.id}">Approve</button>
+               <button class="btn-reject" data-action="reject" data-id="${r.id}">Reject</button>
+             </div>`;
+      } else if (r.status === "approved") {
+        next = "Ready to pay";
+        actions = `<button class="btn-primary" data-action="pay" data-id="${r.id}">Pay now</button>`;
+      } else {
+        next = `Payment failed<span class="sub">${esc(r.fail_reason || "Unknown reason")}</span>`;
+        actions = `<button class="btn-primary" data-action="pay" data-id="${r.id}">Retry payment</button>`;
+      }
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${esc(r.vendor)}<span class="sub">Invoice ${esc(r.invoice_ref)}, ${esc(r.project)} project, ${METHOD[r.method]}</span></td>
+        <td>${esc(r.requester)}</td>
+        <td class="nowrap">${money(r.amount)}</td>
+        <td class="nowrap ${w.late ? 'late' : ''}">${w.text}</td>
+        <td>${next}</td>
+        <td>${actions}</td>`;
+      body.appendChild(row);
+    });
+  }
+
+  // ---- SEARCH RESULTS ----
+  function renderResults() {
+    const f = document.getElementById("filters");
+    const v = name => f.elements[name].value.trim().toLowerCase();
+    const rows = requests
+      .filter(r => (!v("vendor") || r.vendor.toLowerCase().includes(v("vendor"))) &&
+                   (!v("requester") || r.requester.toLowerCase().includes(v("requester"))) &&
+                   (!v("project") || r.project.toLowerCase() === v("project")) &&
+                   (!v("status") || r.status === v("status")) &&
+                   (!v("method") || r.method === v("method")) &&
+                   (!v("from") || r.date >= v("from")) &&
+                   (!v("to") || r.date <= v("to")))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const body = document.getElementById("results-body");
+    body.innerHTML = rows.map(r => `<tr>
+        <td>${esc(r.vendor)}<span class="sub">Invoice ${esc(r.invoice_ref)}</span></td>
+        <td>${esc(r.requester)}</td><td>${esc(r.project)}</td>
+        <td class="nowrap">${money(r.amount)}</td><td>${METHOD[r.method]}</td>
+        <td>${badge(r.status)}</td><td class="nowrap">${r.date}</td></tr>`).join("");
+    document.getElementById("results-empty").hidden = rows.length > 0;
+  }
+
+  function renderAll() { renderSummary(); renderQueue(); renderResults(); }
+
+  // ---- SWAP-IN POINT 1: load all requests from the API (URL is a guess, confirm with the backend) ----
+  // async function loadRequests() {
+  //   const response = await fetch('/api/requests/', { headers: { 'Authorization': 'Token ' + yourToken } });
+  //   requests = await response.json();
+  //   renderAll();
+  // }
+  // loadRequests();
+  // For the filters, the same call can take query parameters: /api/requests/?vendor=...&status=...
+
+  renderAll();
+  document.getElementById("filters").addEventListener("input", renderResults);
+  document.getElementById("filters").addEventListener("reset", () => setTimeout(renderResults, 0));
+
+  // ---- SECOND APPROVAL ----
+  async function approve(id) {
+    const r = requests.find(x => x.id === id);
+    // ---- SWAP-IN POINT 2: POST /api/requests/${id}/approve/ (URL is a guess) ----
+    r.status = "approved";
+    renderAll();
+    showBanner(`Approved ${r.vendor}. It is ready to pay.`);
+  }
+
+  // ---- PAY / RETRY ----
+  // The button is disabled the moment it is clicked, so a double click cannot send two payments.
+  // The backend must ALSO refuse a repeat call for the same request (idempotency); the UI alone is never enough.
+  async function pay(id, btn) {
+    btn.disabled = true;
+    btn.textContent = "Processing";
+    const r = requests.find(x => x.id === id);
+
+    // ---- SWAP-IN POINT 3: POST /api/requests/${id}/pay/ (URL is a guess). The mock provider runs behind it. ----
+    // const response = await fetch(`/api/requests/${id}/pay/`, { method: 'POST', headers: { 'Authorization': 'Token ' + yourToken } });
+    // const result = await response.json();   // e.g. { status: "SUCCESS" } or { status: "FAILED", reason: "..." }
+    await new Promise(res => setTimeout(res, 700));   // placeholder: pretend the provider takes a moment
+    const success = Math.random() > 0.25;              // placeholder: roughly one in four payments fails
+
+    if (success) {
+      r.status = "paid"; delete r.fail_reason;
+      showBanner(`Paid ${r.vendor}, KES ${money(r.amount)}.`);
+    } else {
+      r.status = "failed"; r.fail_reason = "Provider unavailable";
+      showBanner(`Payment to ${r.vendor} failed: provider unavailable. You can retry from the list.`, true);
+    }
+    renderAll();
+  }
+
+  // ---- REJECT (reason is required) ----
+  const dialog = document.getElementById("reject-dialog");
+  const reasonBox = document.getElementById("reject-reason");
+  let rejectingId = null;
+
+  function openReject(id) {
+    const r = requests.find(x => x.id === id);
+    rejectingId = id;
+    document.getElementById("reject-target").textContent = `${r.vendor}, KES ${money(r.amount)}`;
+    reasonBox.value = "";
+    dialog.showModal();
+  }
+  document.getElementById("reject-cancel").addEventListener("click", () => dialog.close());
+  document.getElementById("reject-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const reason = reasonBox.value.trim();
+    if (!reason) return;
+    const r = requests.find(x => x.id === rejectingId);
+    // ---- SWAP-IN POINT 4: POST /api/requests/${rejectingId}/reject/ with body { reason } (URL is a guess) ----
+    r.status = "rejected";
+    dialog.close();
+    renderAll();
+    showBanner(`Rejected ${r.vendor}. Your reason has been recorded.`);
+  });
+
+  // ---- One click listener for the action queue ----
+  document.getElementById("queue-body").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (btn.dataset.action === "approve") approve(id);
+    if (btn.dataset.action === "reject") openReject(id);
+    if (btn.dataset.action === "pay") pay(id, btn);
+  });
+</script>
+
+</body>
+</html>
