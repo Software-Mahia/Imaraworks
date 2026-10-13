@@ -309,9 +309,7 @@
 
   // ---- SWAP-IN POINT: replace renderRequests() call below with this once the API exists ----
   // async function loadRequests() {
-  //   const response = await fetch('/api/requests/', {
-  //     headers: { 'Authorization': 'Token ' + yourToken }
-  //   });
+  //   const response = await AUTH.apiFetch('/api/requests/');
   //   requests = await response.json();
   //   renderRequests();
   // }
@@ -345,10 +343,9 @@
     };
 
     // ---- SWAP-IN POINT: replace the two lines below with a POST fetch once the API exists ----
-    // const response = await fetch('/api/requests/', {
+        // const response = await AUTH.apiFetch('/api/requests/', {
     //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json', 'Authorization': 'Token ' + yourToken },
-    //   body: JSON.stringify(newRequest)
+    //   body: JSON.stringify(newRequest)   // apiFetch adds the token and the JSON Content-Type
     // });
     // requests.unshift(await response.json());
 

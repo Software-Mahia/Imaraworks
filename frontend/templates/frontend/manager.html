@@ -224,8 +224,8 @@
       const actionsCell = isOwn
         ? `<span class="own-note">You submitted this, so another manager needs to approve it.</span>`
         : `<div class="actions">
-             <button class="btn-primary" data-action="approve" data-id="${r.id}">Approve</button>
-             <button class="btn-reject" data-action="reject" data-id="${r.id}">Reject</button>
+             <button class="btn-primary" data-action="approve" data-id="${Number(r.id)}">Approve</button>
+             <button class="btn-reject" data-action="reject" data-id="${Number(r.id)}">Reject</button>
            </div>`;
 
       const row = document.createElement("tr");
@@ -249,9 +249,7 @@
 
   // ---- SWAP-IN POINT 1: load the queue from the API ----
   // async function loadQueue() {
-  //   const response = await fetch('/api/requests/?status=pending_approval', {
-  //     headers: { 'Authorization': 'Token ' + yourToken }
-  //   });
+  //   const response = await AUTH.apiFetch('/api/requests/?status=pending_approval');
   //   requests = await response.json();
   //   render();
   // }
@@ -264,10 +262,7 @@
     const r = requests.find(x => x.id === id);
 
     // ---- SWAP-IN POINT 2: call the approve endpoint (URL is a guess, confirm with the backend) ----
-    // const response = await fetch(`/api/requests/${id}/approve/`, {
-    //   method: 'POST',
-    //   headers: { 'Authorization': 'Token ' + yourToken }
-    // });
+    // const response = await AUTH.apiFetch(`/api/requests/${id}/approve/`, { method: 'POST' });
     // if (!response.ok) { showBanner('Could not approve this request.'); return; }
 
     requests = requests.filter(x => x.id !== id);
@@ -299,10 +294,9 @@
     const r = requests.find(x => x.id === rejectingId);
 
     // ---- SWAP-IN POINT 3: call the reject endpoint with the reason (URL is a guess) ----
-    // const response = await fetch(`/api/requests/${rejectingId}/reject/`, {
+    // const response = await AUTH.apiFetch(`/api/requests/${rejectingId}/reject/`, {
     //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json', 'Authorization': 'Token ' + yourToken },
-    //   body: JSON.stringify({ reason })
+    //   body: JSON.stringify({ reason })   // apiFetch adds the token and the JSON Content-Type
     // });
     // if (!response.ok) { showBanner('Could not reject this request.'); return; }
 

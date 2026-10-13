@@ -235,15 +235,15 @@
         actions = isOwn
           ? `<span class="own-note">You submitted this, so another Finance Officer needs to approve it.</span>`
           : `<div class="actions">
-               <button class="btn-primary" data-action="approve" data-id="${r.id}">Approve</button>
-               <button class="btn-reject" data-action="reject" data-id="${r.id}">Reject</button>
+               <button class="btn-primary" data-action="approve" data-id="${Number(r.id)}">Approve</button>
+               <button class="btn-reject" data-action="reject" data-id="${Number(r.id)}">Reject</button>
              </div>`;
       } else if (r.status === "approved") {
         next = "Ready to pay";
-        actions = `<button class="btn-primary" data-action="pay" data-id="${r.id}">Pay now</button>`;
+        actions = `<button class="btn-primary" data-action="pay" data-id="${Number(r.id)}">Pay now</button>`;
       } else {
         next = `Payment failed<span class="sub">${esc(r.fail_reason || "Unknown reason")}</span>`;
-        actions = `<button class="btn-primary" data-action="pay" data-id="${r.id}">Retry payment</button>`;
+        actions = `<button class="btn-primary" data-action="pay" data-id="${Number(r.id)}">Retry payment</button>`;
       }
 
       const row = document.createElement("tr");
@@ -277,7 +277,7 @@
         <td>${esc(r.vendor)}<span class="sub">Invoice ${esc(r.invoice_ref)}</span></td>
         <td>${esc(r.requester)}</td><td>${esc(r.project)}</td>
         <td class="nowrap">${money(r.amount)}</td><td>${METHOD[r.method]}</td>
-        <td>${badge(r.status)}</td><td class="nowrap">${r.date}</td></tr>`).join("");
+        <td>${badge(r.status)}</td><td class="nowrap">${esc(r.date)}</td></tr>`).join("");
     document.getElementById("results-empty").hidden = rows.length > 0;
   }
 
@@ -285,7 +285,7 @@
 
   // ---- SWAP-IN POINT 1: load all requests from the API (URL is a guess, confirm with the backend) ----
   // async function loadRequests() {
-  //   const response = await fetch('/api/requests/', { headers: { 'Authorization': 'Token ' + yourToken } });
+  //   const response = await AUTH.apiFetch('/api/requests/');
   //   requests = await response.json();
   //   renderAll();
   // }
@@ -314,7 +314,7 @@
     const r = requests.find(x => x.id === id);
 
     // ---- SWAP-IN POINT 3: POST /api/requests/${id}/pay/ (URL is a guess). The mock provider runs behind it. ----
-    // const response = await fetch(`/api/requests/${id}/pay/`, { method: 'POST', headers: { 'Authorization': 'Token ' + yourToken } });
+    // const response = await AUTH.apiFetch(`/api/requests/${id}/pay/`, { method: 'POST' });
     // const result = await response.json();   // e.g. { status: "SUCCESS" } or { status: "FAILED", reason: "..." }
     await new Promise(res => setTimeout(res, 700));   // placeholder: pretend the provider takes a moment
     const success = Math.random() > 0.25;              // placeholder: roughly one in four payments fails
