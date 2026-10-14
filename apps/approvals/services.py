@@ -236,6 +236,44 @@ def decide_rejection(*, role, is_requester, status, amount, approved_levels, rea
     )
 
 
+def reject(payment_request, user, reason):
+    """Record ``user`` rejecting ``payment_request``. Returns the RejectionDecision.
+
+    Raises ApprovalDenied (nothing written) if the user may not reject or the
+    reason is blank. Same shape as approve(): lock, decide, then write the
+    Approval row, the REJECTED status and the audit entry in one transaction.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_rejection(
+            role=_role_of(user),
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            amount=locked.amount,
+            approved_levels=_counting_levels(locked),
+            reason=reason,
+        )
+
+        Approval.objects.create(
+            request=locked,
+            approver=user,
+            decision=Approval.REJECTED,
+            level=decision.level,
+            reason=decision.reason,
+        )
+        locked.status = decision.new_status
+        locked.save(update_fields=["status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
+
+
 class AmountChangeDenied(Exception):
     """Raised when a request's amount may not be changed in its current status."""
 
