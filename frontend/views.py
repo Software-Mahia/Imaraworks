@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.views.generic import TemplateView
 
 class EmployeeView(TemplateView):
@@ -11,6 +10,8 @@ class FinanceView(TemplateView):
     template_name = "frontend/finance.html"
 
 
+
 class LoginView(TemplateView):
     template_name = "frontend/login.html"
 # Create your views here.
+
