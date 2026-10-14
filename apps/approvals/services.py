@@ -398,3 +398,47 @@ def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
             "retiered": retiered,
         },
     )
+
+
+def change_amount(payment_request, user, new_amount):
+    """Save a new amount on ``payment_request``. Returns the AmountChangeDecision,
+    or None if the amount is the same.
+
+    Raises AmountChangeDenied (nothing written) if the status locks the amount.
+
+    Same shape as approve(): lock, decide, write. The approvals that counted
+    are marked superseded rather than deleted, so the audit trail still shows
+    who approved the old amount.
+
+    Who may edit a request is NOT checked here. That belongs to the edit
+    endpoint, whose owner the team hasn't agreed yet. This step only enforces
+    what an amount change does to approvals.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_amount_change(
+            status=locked.status,
+            old_amount=locked.amount,
+            new_amount=new_amount,
+            approved_levels=_counting_levels(locked),
+        )
+        if decision is None:
+            return None
+
+        locked.approvals.filter(
+            decision=Approval.APPROVED,
+            superseded=False,
+            level__in=decision.supersede_levels,
+        ).update(superseded=True)
+        locked.amount = Decimal(str(new_amount))
+        locked.status = decision.new_status
+        locked.save(update_fields=["amount", "status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
