@@ -39,7 +39,7 @@ const AUTH = (() => {
 
   function logout() {
     clearTokens();
-    window.location.href = "/login/"; // the login page does not exist yet; this is the route it should use
+    window.location.href = "/login/";  // route of LoginView in frontend/urls.py
   }
 
   async function doRefresh() {
@@ -91,6 +91,7 @@ const AUTH = (() => {
       try {
         const newAccess = await refreshAccessToken();
         res = await fetch(url, { ...options, headers: buildHeaders(options, newAccess) });
+        if (res.status === 401) logout(); // the fresh token was rejected too: end the session
       } catch (err) {
         logout();
         throw err;
