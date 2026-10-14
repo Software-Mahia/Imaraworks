@@ -31,6 +31,7 @@ from apps.approvals.logic import (
     is_fully_approved,
     required_levels,
 )
+from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest
 
 # Status values come straight from A's PaymentRequest so there is one source of
@@ -42,10 +43,10 @@ STATUS_PENDING = PaymentRequest.PENDING_APPROVAL
 STATUS_APPROVED = PaymentRequest.APPROVED
 STATUS_REJECTED = PaymentRequest.REJECTED
 
-# Audit action names. Placeholders until the team agrees the audit format.
-AUDIT_APPROVED = "APPROVED"
-AUDIT_REJECTED = "REJECTED"
-AUDIT_AMOUNT_CHANGED = "AMOUNT_CHANGED"
+# Audit action names come from AuditLog, the team's one audit vocabulary.
+AUDIT_APPROVED = AuditLog.APPROVED
+AUDIT_REJECTED = AuditLog.REJECTED
+AUDIT_AMOUNT_CHANGED = AuditLog.AMOUNT_CHANGED
 
 MSG_REASON_REQUIRED = "A reason is required to reject a request."
 MSG_AMOUNT_LOCKED = "The amount can no longer be changed for this request."
