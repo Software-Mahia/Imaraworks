@@ -3,7 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.vendors.models import Vendor
-from .models import PaymentRequest
+from .models import PaymentRequest, Project
 
 
 class PaymentRequestSerializer(serializers.ModelSerializer):
@@ -31,3 +31,8 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
         if not value.is_active:
             raise serializers.ValidationError("This vendor is no longer active.")
         return value
+
+class ProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ['id', 'name']
