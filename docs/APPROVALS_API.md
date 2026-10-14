@@ -1,6 +1,6 @@
 # API Contract (Part B: approvals and audit)
 
-Status: **planned, not built yet.** This is the agreed shape so the frontend can build against it. Last updated: 2026-10-14.
+Status: **built** (PR "Part B: approvals and audit endpoints"). Last updated: 2026-10-14.
 
 Same conventions as [API.md](API.md): JSON everywhere, `Authorization: Bearer <access token>` on every call, errors as `{"detail": "..."}`.
 
@@ -84,8 +84,8 @@ Checks run in this order, and the first one that fails is returned:
 
 | Status | `detail` | When |
 |---|---|---|
-| 404 | `Not found.` | No such request, or you can't see it |
-| 403 | `Your role cannot approve payments.` | EMPLOYEE or ADMIN |
+| 404 | `Not found.` | No such request, or you can't see it (this includes every ADMIN, since admins see no requests) |
+| 403 | `Your role cannot approve payments.` | EMPLOYEE, on their own request |
 | 409 | `This request is not awaiting approval.` | Status isn't `PENDING_APPROVAL` |
 | 403 | `You cannot approve a request you created.` | Self-approval (applies to reject too) |
 | 403 | `Your approval is not required for this request.` | e.g. FINANCE on a request ≤ 50k |
