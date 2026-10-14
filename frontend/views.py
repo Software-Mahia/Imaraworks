@@ -8,9 +8,6 @@ class ManagerView(TemplateView):
 
 class FinanceView(TemplateView):
     template_name = "frontend/finance.html"
-
-
-
 class LoginView(TemplateView):
     template_name = "frontend/login.html"
 
