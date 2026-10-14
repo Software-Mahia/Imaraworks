@@ -91,7 +91,7 @@ const AUTH = (() => {
       try {
         const newAccess = await refreshAccessToken();
         res = await fetch(url, { ...options, headers: buildHeaders(options, newAccess) });
-        if (res.status === 401) logout(); // the fresh token was rejected too: end the session
+        if (res.status === 401) throw new Error("Session expired - please log in again.");
       } catch (err) {
         logout();
         throw err;
