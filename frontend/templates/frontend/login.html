@@ -1,0 +1,128 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ImaraWorks · Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1E3A5F; --amber: #C9812B;
+    --btn: #A6691F; --btn-hover: #8F5A18;
+    --bg: #F6F7F5; --surface: #FFFFFF; --border: #E1E4E1;
+    --text: #1F2933; --text-soft: #5A6472;
+    --bad-bg: #F7E7E2; --bad-text: #B3492B;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  .topbar { background: var(--navy); color: #fff; padding: 16px 32px; }
+  .topbar .brand { font-weight: 700; font-size: 16px; }
+  .topbar .brand span { color: var(--amber); }
+
+  .wrap { display: flex; justify-content: center; padding: 72px 24px; }
+  .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 32px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .lede { font-size: 14px; color: var(--text-soft); margin: 0 0 24px; }
+
+  label { display: block; font-size: 13px; color: var(--text-soft); margin-bottom: 6px; }
+  input { width: 100%; font-family: inherit; font-size: 14px; color: var(--text); padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; background: #fff; }
+  input:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+
+  button { width: 100%; font-family: inherit; font-size: 14px; font-weight: 600; background: var(--btn); color: #fff; border: none; border-radius: 6px; padding: 11px 18px; cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--btn-hover); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .error { background: var(--bad-bg); color: var(--bad-text); border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <h1>Sign in</h1>
+    <p class="lede">Use your ImaraWorks account to continue.</p>
+
+    <div id="error" class="error" role="alert" hidden></div>
+
+    <form id="login-form">
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" required autofocus>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+      <button type="submit" id="submit-btn">Sign in</button>
+    </form>
+  </section>
+</main>
+
+<script src="{% static 'frontend/auth.js' %}"></script>
+<script>
+  // Where each role lands after signing in (roles come from /api/auth/me/, always uppercase).
+  // ADMIN is left out on purpose: there is no administrator page yet, and /admin/ is Django's own
+  // admin, which uses a separate session login that these tokens do not open. Add it once decided.
+  const HOME_BY_ROLE = { EMPLOYEE: "/employee/", MANAGER: "/manager/", FINANCE: "/finance/" };
+
+  const form = document.getElementById("login-form");
+  const errorBox = document.getElementById("error");
+  const submitBtn = document.getElementById("submit-btn");
+
+  function showError(message) {
+    errorBox.textContent = message;   // textContent, never innerHTML: the message is shown as plain text
+    errorBox.hidden = false;
+  }
+
+  function setBusy(busy) {
+    submitBtn.disabled = busy;
+    submitBtn.textContent = busy ? "Signing in..." : "Sign in";
+  }
+
+  // Sends the user to their own page. Returns false if their role has no page yet.
+  function goHome(user) {
+    const home = HOME_BY_ROLE[user.role];
+    if (!home) return false;
+    window.location.href = home;
+    return true;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.hidden = true;
+    setBusy(true);
+    try {
+      await AUTH.login(form.elements.username.value.trim(), form.elements.password.value);
+      const user = await AUTH.getCurrentUser();
+      if (!goHome(user)) {
+        showError("You are signed in, but there is no page for your role yet.");
+        setBusy(false);
+      }
+      // On success the browser is already moving to the next page, so the button stays disabled.
+    } catch (err) {
+      // fetch() throws a TypeError when the server cannot be reached at all.
+      showError(err instanceof TypeError
+        ? "Could not reach the server. Check your connection and try again."
+        : err.message);
+      form.elements.password.value = "";
+      form.elements.password.focus();
+      setBusy(false);
+    }
+  });
+
+  // Already signed in? Skip the form. If the stored tokens are stale, AUTH clears them and
+  // reloads this page once, and then the form shows as normal.
+  (async () => {
+    if (!AUTH.isLoggedIn()) return;
+    try {
+      goHome(await AUTH.getCurrentUser());
+    } catch (err) { /* stay on the form */ }
+  })();
+</script>
+
+</body>
+</html>
