@@ -13,5 +13,5 @@ class FinanceView(TemplateView):
 
 class LoginView(TemplateView):
     template_name = "frontend/login.html"
-# Create your views here.
+
 
