@@ -1,6 +1,6 @@
 # API Contract (Part A)
 
-Last updated: 2026-10-14. Matches PRs #2(payment request endpoints) and #4 (vendor and project lists).
+Last updated: 2026-10-16. Matches PRs #2 (payment request endpoints), #4 (vendor and project lists) and the name/id PR [#19]
 
 All endpoints return JSON. Everything except login and refresh needs the header `Authorization: Bearer <access token>`.
 
@@ -24,7 +24,7 @@ Access tokens last about 5 minutes, so expect the 401, refresh, retry flow often
 
 ### GET /api/auth/me/
 ```json
-{"username": "carol", "first_name": "Carol", "last_name": "Wanjiku", "role": "MANAGER"}
+{"id": 1, "username": "carol", "first_name": "Carol", "last_name": "Wanjiku", "role": "MANAGER"}
 ```
 `role` is one of `EMPLOYEE`, `MANAGER`, `FINANCE`, `ADMIN`.
 `role` is `null` for a user with no profile (for example a superuser). Treat it as no access.
@@ -70,7 +70,7 @@ Sorted by name.
 - `amount` must be greater than 0.
 - `reason` max 500 characters. `invoice_number` required, max 100 characters, trimmed.
 - `payment_method` is `MPESA`, `BANK_TRANSFER` or `CASH`.
-- `date` is `YYYY-MM-DD`. `notes` is optional.
+- `date` is the invoice date (`YYYY-MM-DD`). It is not when the request was created. Use `created_at` for that.
 - Do **not** send `requester` or `status`. The server sets them (requester is the logged-in user, status is `DRAFT`). If sent, they are ignored.
 
 ### Response (201 on create, 200 on get)
@@ -79,7 +79,7 @@ Sorted by name.
   "id": 1,
   "vendor": 1, "vendor_name": "Metro Hardware Ltd.",
   "project": 1, "project_name": "Westlands Project",
-  "requester": 1, "requester_username": "alice",
+  "requester": 1, "requester_username": "alice",   "requester_name": "Alice Mwangi",
   "amount": "24500.00",
   "reason": "Site materials",
   "invoice_number": "INV-1032",
@@ -91,6 +91,7 @@ Sorted by name.
   "updated_at": "2026-10-14T01:00:00Z"
 }
 ```
+- `requester_name` is the full name, or the username if the user has no name set.
 - `amount` is a string, not a number. Format it for display and don't do arithmetic on it directly.
 - Timestamps are UTC.
 - `status` values: `DRAFT`, `SUBMITTED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `PROCESSING`, `PAID`, `FAILED`.
