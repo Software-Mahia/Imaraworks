@@ -99,7 +99,9 @@
       await AUTH.login(form.elements.username.value.trim(), form.elements.password.value);
       const user = await AUTH.getCurrentUser();
       if (!goHome(user)) {
-        showError("You are signed in, but there is no page for your role yet.");
+        showError(user.role
+          ? "You are signed in, but there is no page for your role yet."
+          : "Your account has no role assigned yet. Ask an administrator to set it up.");
         setBusy(false);
       }
       // On success the browser is already moving to the next page, so the button stays disabled.
