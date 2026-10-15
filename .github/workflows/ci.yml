@@ -1,0 +1,32 @@
+# Continuous integration: run the Django test suite on every push and PR,
+# so a change that breaks a test is caught before it is merged into main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"   # matches the team's local venv
+          cache: pip               # reuse downloaded packages between runs
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check for missing migrations
+        # Fails if someone changed a model but forgot to commit its migration.
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: python manage.py test

@@ -17,7 +17,7 @@ class PaymentRequestApiTests(APITestCase):
         self.url = '/api/payment-requests/'
 
     def make_user(self, name, role):
-        user = User.objects.create_user(name, password='pw')
+        user = User.objects.create_user(name)
         Profile.objects.create(user=user, role=role)
         return user
 
@@ -87,3 +87,10 @@ class PaymentRequestApiTests(APITestCase):
         self.client.force_authenticate(self.grace)
         res = self.client.post(self.url, self.payload(), format='json')  # same invoice
         self.assertEqual(res.status_code, 403)
+
+    def test_me_works_for_user_without_profile(self):
+        user = User.objects.create_user('noprofile')
+        self.client.force_authenticate(user)
+        res = self.client.get('/api/auth/me/')
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.data['role'])

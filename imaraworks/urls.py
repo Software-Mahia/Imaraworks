@@ -27,5 +27,6 @@ urlpatterns = [
     path('api/payment-requests/', include('apps.payment_requests.urls')),
     path('api/vendors/', include('apps.vendors.urls')),
     path('api/projects/', ProjectList.as_view()),
-    path('api-auth/', include('rest_framework.urls'))
+    path('api-auth/', include('rest_framework.urls')),
+    path('', include('frontend.urls')),
 ]
