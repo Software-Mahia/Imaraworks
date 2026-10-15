@@ -372,6 +372,40 @@ def decide_submission(*, is_requester, status, amount):
     )
 
 
+def submit(payment_request, user):
+    """Send ``payment_request`` for approval. Returns the SubmitDecision.
+
+    Raises SubmitDenied (nothing written) if the rules say no.
+
+    Same shape as approve(): lock, decide, write, all in one transaction. The
+    lock matters for a double-click: two submits arriving together run one
+    after the other, so the second sees PENDING_APPROVAL and is refused instead
+    of writing a second SUBMITTED audit entry.
+
+    Role is not checked: anyone who can create a request can submit their own
+    (managers and finance raise requests too). Role only gates approval.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_submission(
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            amount=locked.amount,
+        )
+
+        locked.status = decision.new_status
+        locked.save(update_fields=["status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
+
+
 class AmountChangeDenied(Exception):
     """Raised when a request's amount may not be changed in its current status."""
 
