@@ -15,6 +15,7 @@ from apps.accounts.models import Profile
 from apps.approvals.logic import LEVEL_FINANCE as F, LEVEL_MANAGER as M
 from apps.approvals.services import (
     MSG_AMOUNT_LOCKED,
+    MSG_NOT_REQUESTER_EDIT,
     AmountChangeDenied,
     approval_summary,
     approve,
@@ -156,3 +157,16 @@ class ChangeAmountTests(TestCase):
         with self.assertRaises(AmountChangeDenied):
             change_amount(req, self.alice, '20000')
         self.assertFalse(req.audit_logs.exists())
+
+    def test_approver_cannot_change_the_amount(self):
+        # carol approved it; she still can't edit the number she approved.
+        req = self.make_request('24500')
+        approve(req, self.carol)
+        with self.assertRaises(AmountChangeDenied) as ctx:
+            change_amount(req, self.carol, '20000')
+        self.assertEqual(ctx.exception.reason, MSG_NOT_REQUESTER_EDIT)
+        req.refresh_from_db()
+        self.assertEqual(req.amount, Decimal('24500'))
+        self.assertEqual(req.status, PaymentRequest.APPROVED)
+        self.assertFalse(req.approvals.filter(superseded=True).exists())
+        self.assertFalse(req.audit_logs.filter(action=AuditLog.AMOUNT_CHANGED).exists())

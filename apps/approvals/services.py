@@ -53,6 +53,7 @@ AUDIT_AMOUNT_CHANGED = AuditLog.AMOUNT_CHANGED
 
 MSG_REASON_REQUIRED = "A reason is required to reject a request."
 MSG_AMOUNT_LOCKED = "The amount can no longer be changed for this request."
+MSG_NOT_REQUESTER_EDIT = "Only the person who created this request can change its amount."
 
 
 class ApprovalDenied(Exception):
@@ -344,7 +345,7 @@ _EDITABLE_STATUSES = {STATUS_DRAFT, STATUS_SUBMITTED, STATUS_PENDING, STATUS_APP
 _PRE_APPROVAL_STATUSES = {STATUS_DRAFT, STATUS_SUBMITTED}
 
 
-def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
+def decide_amount_change(*, is_requester, status, old_amount, new_amount, approved_levels):
     """Work out the result of changing a request's amount, or raise AmountChangeDenied.
 
     Returns None if the amount didn't actually change (nothing to do).
@@ -357,7 +358,15 @@ def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
     Re-tiering needs no special code: approval always reads required_levels()
     on the CURRENT amount, so a request that now crosses 50k automatically needs
     finance too. ``retiered`` is only reported here so the audit log shows it.
+
+    Only the requester may change the amount: it is their request, and an
+    approver editing it would be approving a number nobody asked for. This is
+    checked first, so someone else's request never reveals whether its amount
+    is still editable.
     """
+    if not is_requester:
+        raise AmountChangeDenied(MSG_NOT_REQUESTER_EDIT)
+
     old_amount = Decimal(str(old_amount))
     new_amount = Decimal(str(new_amount))
     if new_amount == old_amount:
@@ -401,14 +410,15 @@ def change_amount(payment_request, user, new_amount):
     are marked superseded rather than deleted, so the audit trail still shows
     who approved the old amount.
 
-    Who may edit a request is NOT checked here. That belongs to the edit
-    endpoint, whose owner the team hasn't agreed yet. This step only enforces
-    what an amount change does to approvals.
+    Raises AmountChangeDenied too if ``user`` didn't create the request. That
+    rule lives in decide_amount_change(), so it is checked under the lock with
+    the others.
     """
     with transaction.atomic():
         locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
 
         decision = decide_amount_change(
+            is_requester=(locked.requester_id == user.id),
             status=locked.status,
             old_amount=locked.amount,
             new_amount=new_amount,
