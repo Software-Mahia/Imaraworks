@@ -27,6 +27,7 @@ Access tokens last about 5 minutes, so expect the 401, refresh, retry flow often
 {"username": "carol", "first_name": "Carol", "last_name": "Wanjiku", "role": "MANAGER"}
 ```
 `role` is one of `EMPLOYEE`, `MANAGER`, `FINANCE`, `ADMIN`.
+`role` is `null` for a user with no profile (for example a superuser). Treat it as no access.
 
 ## Reference data
 
