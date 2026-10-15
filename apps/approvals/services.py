@@ -26,6 +26,7 @@ from decimal import Decimal
 
 from django.db import transaction
 
+from apps.accounts.permissions import get_role
 from apps.approvals.logic import (
     approver_level,
     evaluate_approval,
@@ -118,16 +119,6 @@ def decide_approval(*, role, is_requester, status, amount, approved_levels):
     )
 
 
-def role_of(user):
-    """The user's Profile role, or None if they have no profile.
-
-    Same behaviour as get_role() in PR #2 (apps/accounts/permissions.py);
-    switch to that once it is merged.
-    """
-    profile = getattr(user, "profile", None)
-    return profile.role if profile else None
-
-
 def _counting_levels(payment_request):
     """Levels whose approval still counts: approved and not superseded.
 
@@ -163,7 +154,7 @@ def approval_queue(user):
     queue can never list a request that approve() would then refuse. The
     database filter only narrows the candidates (pending, not created by user).
     """
-    role = role_of(user)
+    role = get_role(user)
     if approver_level(role) is None:
         return []
     candidates = (
@@ -203,7 +194,7 @@ def approve(payment_request, user):
         locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
 
         decision = decide_approval(
-            role=role_of(user),
+            role=get_role(user),
             is_requester=(locked.requester_id == user.id),
             status=locked.status,
             amount=locked.amount,
@@ -295,7 +286,7 @@ def reject(payment_request, user, reason):
         locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
 
         decision = decide_rejection(
-            role=role_of(user),
+            role=get_role(user),
             is_requester=(locked.requester_id == user.id),
             status=locked.status,
             amount=locked.amount,

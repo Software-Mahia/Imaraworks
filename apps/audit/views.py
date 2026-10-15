@@ -12,8 +12,8 @@ from rest_framework import generics
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
 from apps.accounts.models import Profile
-from apps.approvals.services import role_of
-from apps.approvals.visibility import visible_requests
+from apps.accounts.permissions import get_role
+from apps.payment_requests.views import visible_requests
 
 from .models import AuditLog
 from .serializers import AuditEntrySerializer, AuditLogSerializer
@@ -23,7 +23,7 @@ class IsAdminRole(BasePermission):
     message = "Only admins can read the audit log."
 
     def has_permission(self, request, view):
-        return role_of(request.user) == Profile.ADMIN
+        return get_role(request.user) == Profile.ADMIN
 
 
 class RequestHistoryView(generics.ListAPIView):

@@ -10,6 +10,9 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import get_role
+from apps.payment_requests.views import visible_requests
+
 from . import logic
 from .serializers import QueueItemSerializer
 from .services import (
@@ -19,9 +22,7 @@ from .services import (
     approval_summary,
     approve,
     reject,
-    role_of,
 )
-from .visibility import visible_requests
 
 # Which HTTP status each refusal becomes:
 #   403 "not you"          -- the user can never do this
@@ -45,7 +46,7 @@ class IsApprover(BasePermission):
     message = logic.MSG_ROLE_CANNOT
 
     def has_permission(self, request, view):
-        return logic.approver_level(role_of(request.user)) is not None
+        return logic.approver_level(get_role(request.user)) is not None
 
 
 class ApprovalQueueView(APIView):
