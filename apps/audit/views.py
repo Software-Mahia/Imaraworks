@@ -2,7 +2,7 @@
 
 Who can read what (decided with the team, see #2):
   - a request's history: exactly the people who can see that request
-  - the whole log:       ADMIN only
+  - the whole log:       ADMIN only, without `details` (admins see no payment data)
 There are no write endpoints: entries are only ever created by the services
 that change a request's state.
 """
