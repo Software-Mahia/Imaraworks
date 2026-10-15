@@ -4,8 +4,6 @@ The other test files check one piece each (a rule, a save step, an endpoint).
 These follow one request from the approver's queue to its final status and its
 audit trail, the way people will use it, so they catch pieces that work alone
 but are wired together wrongly.
-
-There's no edit endpoint yet, so amount changes call change_amount() directly.
 """
 
 import datetime
@@ -16,7 +14,6 @@ from rest_framework.test import APITestCase
 
 from apps.accounts.models import Profile
 from apps.approvals.logic import LEVEL_FINANCE as F, LEVEL_MANAGER as M
-from apps.approvals.services import change_amount
 from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest, Project
 from apps.vendors.models import Vendor
@@ -64,6 +61,12 @@ class ApprovalFlowTests(APITestCase):
     def reject(self, user, req, reason):
         self.client.force_authenticate(user)
         return self.client.post(f'/api/payment-requests/{req.pk}/reject/', {'reason': reason}, format='json')
+
+    def change_amount(self, user, req, amount):
+        self.client.force_authenticate(user)
+        resp = self.client.patch(f'/api/payment-requests/{req.pk}/amount/', {'amount': amount}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        return resp
 
     def history(self, user, req):
         self.client.force_authenticate(user)
@@ -113,7 +116,7 @@ class ApprovalFlowTests(APITestCase):
         req = self.make_request('67000')
         self.approve(self.carol, req)                             # manager done, finance outstanding
 
-        change_amount(req, self.alice, Decimal('42000'))
+        self.change_amount(self.alice, req, '42000')
 
         # Carol approved 67,000, not 42,000, so her approval no longer counts,
         # and at 42,000 finance is no longer needed.
@@ -134,7 +137,7 @@ class ApprovalFlowTests(APITestCase):
         req.refresh_from_db()
         self.assertEqual(req.status, PaymentRequest.APPROVED)
 
-        change_amount(req, self.alice, Decimal('67000'))
+        self.change_amount(self.alice, req, '67000')
 
         req.refresh_from_db()
         self.assertEqual(req.status, PaymentRequest.PENDING_APPROVAL)
