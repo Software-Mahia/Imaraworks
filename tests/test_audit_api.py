@@ -89,6 +89,16 @@ class AuditLogApiTests(AuditApiTestCase):
         self.assertEqual([e['action'] for e in resp.data], [AuditLog.REJECTED, AuditLog.APPROVED])
         self.assertEqual(resp.data[0]['request'], self.req.pk)
 
+    def test_admin_sees_no_financial_details(self):
+        # Admins have no access to payment data (agreed on #2), so the log
+        # leaves out `details`, which holds amounts and rejection reasons.
+        self.as_user(self.grace)
+        resp = self.client.get(self.url)
+
+        self.assertEqual(set(resp.data[0]), {'id', 'action', 'actor_username', 'timestamp', 'request'})
+        self.assertNotIn('Over the project budget', str(resp.data))
+        self.assertNotIn('148000', str(resp.data))
+
     def test_filter_by_action(self):
         self.as_user(self.grace)
         resp = self.client.get(self.url, {'action': AuditLog.APPROVED})
