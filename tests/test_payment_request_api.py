@@ -17,7 +17,7 @@ class PaymentRequestApiTests(APITestCase):
         self.url = '/api/payment-requests/'
 
     def make_user(self, name, role):
-        user = User.objects.create_user(name, password='pw')
+        user = User.objects.create_user(name)
         Profile.objects.create(user=user, role=role)
         return user
 
