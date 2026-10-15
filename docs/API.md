@@ -1,0 +1,126 @@
+# API Contract (Part A)
+
+Last updated: 2026-10-16. Matches PRs #2 (payment request endpoints), #4 (vendor and project lists) and the name/id PR [#19]
+
+All endpoints return JSON. Everything except login and refresh needs the header `Authorization: Bearer <access token>`.
+
+## Auth
+
+### POST /api/auth/login/
+```json
+{"username": "carol", "password": "password123"}
+```
+200: `{"access": "...", "refresh": "..."}`
+401: `{"detail": "No active account found with the given credentials"}`
+
+### POST /api/auth/refresh/
+```json
+{"refresh": "..."}
+```
+200: `{"access": "..."}`
+401: `{"detail": "Token is invalid or expired", "code": "token_not_valid"}`
+
+Access tokens last about 5 minutes, so expect the 401, refresh, retry flow often.
+
+### GET /api/auth/me/
+```json
+{"id": 1, "username": "carol", "first_name": "Carol", "last_name": "Wanjiku", "role": "MANAGER"}
+```
+`role` is one of `EMPLOYEE`, `MANAGER`, `FINANCE`, `ADMIN`.
+`role` is `null` for a user with no profile (for example a superuser). Treat it as no access.
+
+## Reference data
+
+Any logged-in role. Plain arrays, no pagination.
+
+### GET /api/vendors/
+Active vendors only, sorted by name.
+```json
+[{"id": 1, "name": "Metro Hardware Ltd.", "service": "Construction materials"}]
+```
+
+### GET /api/projects/
+Sorted by name.
+```json
+[{"id": 1, "name": "Westlands Project"}]
+```
+
+## Payment requests
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | /api/payment-requests/ | List, newest first (plain array) |
+| POST | /api/payment-requests/ | Create |
+| GET | /api/payment-requests/<id>/ | One request |
+
+### POST body
+```json
+{
+  "vendor": 1,
+  "project": 1,
+  "amount": "24500.00",
+  "reason": "Site materials",
+  "invoice_number": "INV-1032",
+  "payment_method": "MPESA",
+  "date": "2026-10-14",
+  "notes": ""
+}
+```
+- `vendor` and `project` are ids from the reference endpoints.
+- `amount` must be greater than 0.
+- `reason` max 500 characters. `invoice_number` required, max 100 characters, trimmed.
+- `payment_method` is `MPESA`, `BANK_TRANSFER` or `CASH`.
+- `date` is the invoice date (`YYYY-MM-DD`). It is not when the request was created. Use `created_at` for that.
+- Do **not** send `requester` or `status`. The server sets them (requester is the logged-in user, status is `DRAFT`). If sent, they are ignored.
+
+### Response (201 on create, 200 on get)
+```json
+{
+  "id": 1,
+  "vendor": 1, "vendor_name": "Metro Hardware Ltd.",
+  "project": 1, "project_name": "Westlands Project",
+  "requester": 1, "requester_username": "alice",   "requester_name": "Alice Mwangi",
+  "amount": "24500.00",
+  "reason": "Site materials",
+  "invoice_number": "INV-1032",
+  "payment_method": "MPESA",
+  "date": "2026-10-14",
+  "notes": "",
+  "status": "DRAFT",
+  "created_at": "2026-10-14T01:00:00Z",
+  "updated_at": "2026-10-14T01:00:00Z"
+}
+```
+- `requester_name` is the full name, or the username if the user has no name set.
+- `amount` is a string, not a number. Format it for display and don't do arithmetic on it directly.
+- Timestamps are UTC.
+- `status` values: `DRAFT`, `SUBMITTED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `PROCESSING`, `PAID`, `FAILED`.
+
+### Who sees what
+| Role | List and view | Create |
+|---|---|---|
+| EMPLOYEE | Own requests only | Yes |
+| MANAGER | All requests | Yes |
+| FINANCE | All requests | Yes |
+| ADMIN | None (deliberate: admins manage users, not payments) | No (403) |
+
+## Errors
+
+| Status | Body | When |
+|---|---|---|
+| 400 | `{"amount": ["Amount must be greater than zero."]}` | Field validation. Keys are field names, values are lists of messages |
+| 400 | `{"non_field_errors": ["The fields vendor, invoice_number must make a unique set."]}` | Same vendor and invoice number already exists |
+| 401 | `{"detail": "Authentication credentials were not provided."}` | Missing or expired token |
+| 403 | `{"detail": "Your role cannot create payment requests."}` | Role not allowed to create |
+| 404 | `{"detail": "..."}` | Missing id, or another employee's request (same response for both) |
+
+DRF generates the `detail` wording, so check one real response before relying on exact text. The shapes are reliable.
+
+## Not built yet
+
+Submit, approve and reject; payment processing; audit trail; reports; search filters on the list. Don't call these. Their contracts will be added here by the people who build them.
+
+## Test users
+
+Password for all: `password123`.
+alice and brian (EMPLOYEE), carol and david (MANAGER), faith (FINANCE), grace (ADMIN).
