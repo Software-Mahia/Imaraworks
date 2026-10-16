@@ -94,3 +94,17 @@ class PaymentRequestApiTests(APITestCase):
         res = self.client.get('/api/auth/me/')
         self.assertEqual(res.status_code, 200)
         self.assertIsNone(res.data['role'])
+
+    def test_me_returns_user_id(self):
+        self.client.force_authenticate(self.alice)
+        res = self.client.get('/api/auth/me/')
+        self.assertEqual(res.data['id'], self.alice.id)
+
+    def test_request_includes_requester_full_name(self):
+        self.alice.first_name = 'Alice'
+        self.alice.last_name = 'Mwangi'
+        self.alice.save()
+        self.client.force_authenticate(self.alice)
+        res = self.client.post(self.url, self.payload(), format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['requester_name'], 'Alice Mwangi')
