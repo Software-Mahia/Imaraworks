@@ -7,8 +7,8 @@ from rest_framework.permissions import BasePermission, IsAuthenticated, SAFE_MET
 from apps.accounts.models import Profile
 from apps.accounts.permissions import get_role
 
-from .models import PaymentRequest
-from .serializers import PaymentRequestSerializer
+from .models import PaymentRequest, Project
+from .serializers import PaymentRequestSerializer, ProjectSerializer
 
 CAN_CREATE: tuple[str, ...] = (Profile.EMPLOYEE, Profile.MANAGER, Profile.FINANCE)
 CAN_SEE_ALL: tuple[str, ...] = (Profile.MANAGER, Profile.FINANCE)
@@ -48,3 +48,10 @@ class PaymentRequestDetail(generics.RetrieveAPIView):
 
     def get_queryset(self) -> QuerySet[PaymentRequest]:
         return visible_requests(self.request.user)
+
+class ProjectList(generics.ListAPIView):
+    serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self) -> QuerySet[Project]:
+        return Project.objects.order_by('name')
