@@ -31,7 +31,11 @@ Generate a key with
 `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`.
 Tests (`python manage.py test`) need none of these.
 
-## Test accounts (password: `password123`)
+## Test accounts (local password: `password123`)
+
+`password123` is for local development only. With DEBUG off, `seed_users`
+refuses to run unless `SEED_USER_PASSWORD` is set, so the deployed demo's
+accounts get a password that is not in this repo (issue #21).
 
 | Username | Role |
 |---|---|
