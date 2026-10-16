@@ -4,7 +4,6 @@ Handles idempotency, locking, and transaction boundaries. The gateway is called
 OUTSIDE the database transaction to avoid holding locks during external calls.
 """
 from dataclasses import dataclass
-from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -21,8 +20,22 @@ class PaymentDenied(Exception):
         self.reason = reason
 
 
-# Statuses that can transition to payment processing
-PAYABLE_STATUSES = {PaymentRequest.APPROVED}
+class PaymentGatewayError(Exception):
+    """Raised when a gateway raises while charging.
+
+    The failed attempt is committed as FAILED before this is raised, so the
+    caller can report an infrastructure error without leaving the request
+    stuck in PROCESSING.
+    """
+    def __init__(self, reason: str, transaction: PaymentTransaction | None = None):
+        super().__init__(reason)
+        self.reason = reason
+        self.transaction = transaction
+
+
+# Statuses that can transition to payment processing. FAILED is included so a
+# declined attempt can be retried.
+PAYABLE_STATUSES = {PaymentRequest.APPROVED, PaymentRequest.FAILED}
 
 
 @dataclass(frozen=True)
@@ -38,11 +51,13 @@ def initiate_payment(
     payment_request: PaymentRequest,
     idempotency_key: str,
     gateway_name: str = "mock",
-    amount: Decimal | None = None,
     currency: str = "KES",
     description: str = "",
 ) -> PaymentResult:
     """Initiate payment for an approved request.
+
+    The amount charged is always the request's approved amount, read under the
+    row lock; callers cannot override it.
 
     Idempotency:
     - If `idempotency_key` already exists for this request, return the existing
@@ -60,7 +75,6 @@ def initiate_payment(
         payment_request: The approved payment request.
         idempotency_key: Client-provided unique key (e.g., UUID). Must be unique per request.
         gateway_name: Registered gateway name (default: "mock").
-        amount: Override amount (defaults to request.amount).
         currency: ISO currency code (default: "KES").
         description: Description sent to gateway (can contain "FAIL" to trigger mock decline).
 
@@ -69,7 +83,13 @@ def initiate_payment(
 
     Raises:
         PaymentDenied: If request is not payable, already paid, or key conflicts.
+        PaymentGatewayError: If the gateway raises; the attempt is recorded FAILED first.
+        KeyError: If `gateway_name` is not a registered gateway (no state is written).
     """
+    # Resolve the gateway before writing anything. An unknown name raises KeyError
+    # with no PROCESSING row created, so the request is never stranded.
+    gateway: PaymentGateway = get_gateway(gateway_name)
+
     # --- Step 1: Lock request, check idempotency key FIRST, then status, create PROCESSING transaction ---
     with transaction.atomic():
         locked_request = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
@@ -94,8 +114,8 @@ def initiate_payment(
         if locked_request.status not in PAYABLE_STATUSES:
             raise PaymentDenied(f"Request is not payable (status: {locked_request.status})")
 
-        # Use request amount if not overridden
-        charge_amount = amount if amount is not None else locked_request.amount
+        # The approved amount is authoritative, read under the lock.
+        charge_amount = locked_request.amount
 
         # Create PROCESSING transaction
         txn = PaymentTransaction.objects.create(
@@ -112,14 +132,20 @@ def initiate_payment(
         locked_request.save(update_fields=["status", "updated_at"])
 
     # --- Step 2: Call gateway OUTSIDE the transaction ---
-    gateway: PaymentGateway = get_gateway(gateway_name)
-    charge_result = gateway.charge(
-        amount=charge_amount,
-        currency=currency,
-        reference=str(txn.pk),
-        description=description or f"Request #{locked_request.pk} - {locked_request.vendor.name} - {locked_request.reason}",
-        idempotency_key=idempotency_key,
-    )
+    # A gateway exception must not leave the attempt in PROCESSING: turn it into a
+    # FAILED charge result, record it below, then signal 502 to the caller.
+    gateway_error: str | None = None
+    try:
+        charge_result = gateway.charge(
+            amount=charge_amount,
+            currency=currency,
+            reference=str(txn.pk),
+            description=description or f"Request #{locked_request.pk} - {locked_request.vendor.name} - {locked_request.reason}",
+            idempotency_key=idempotency_key,
+        )
+    except Exception as exc:  # noqa: BLE001 - any provider failure marks the attempt FAILED
+        gateway_error = f"Gateway error: {exc}"
+        charge_result = ChargeResult(reference=str(txn.pk), status="FAILED", reason=gateway_error)
 
     # --- Step 3: Update transaction with result in a new transaction ---
     with transaction.atomic():
@@ -141,11 +167,16 @@ def initiate_payment(
             txn.provider_reason = charge_result.reason or "Provider declined"
             txn.completed_at = timezone.now()
 
-            # Request goes back to APPROVED so it can be retried
+            # Mark the request FAILED so Finance and the requester can see what
+            # happened. FAILED is payable, so the request can still be retried.
             locked_request = PaymentRequest.objects.select_for_update().get(pk=locked_request.pk)
-            locked_request.status = PaymentRequest.APPROVED
+            locked_request.status = PaymentRequest.FAILED
             locked_request.save(update_fields=["status", "updated_at"])
 
         txn.save(update_fields=["status", "provider_reference", "provider_reason", "completed_at", "updated_at"])
+
+    # The FAILED attempt is now committed; surface the infrastructure error.
+    if gateway_error:
+        raise PaymentGatewayError(gateway_error, transaction=txn)
 
     return PaymentResult(transaction=txn, replayed=False, charge_result=charge_result)

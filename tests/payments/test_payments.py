@@ -2,6 +2,7 @@
 import threading
 import time
 from decimal import Decimal
+from unittest import mock
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -272,7 +273,7 @@ class PaymentViewTests(TestCase):
         self.assertIn("already been paid", r2.data["detail"])
 
     def test_mock_decline_via_api(self):
-        """FAIL in description triggers mock decline, request returns to APPROVED."""
+        """FAIL in description triggers mock decline and the request is marked FAILED."""
         req = make_approved_request(self.alice)
         self._auth(self.faith)
 
@@ -284,9 +285,31 @@ class PaymentViewTests(TestCase):
         self.assertEqual(response.data["status"], "FAILED")
         self.assertIn("FAIL", response.data["provider_reason"].upper())
 
-        # Request should be back to APPROVED
+        # Request is FAILED so the failure is visible (and FAILED is retryable)
         req.refresh_from_db()
-        self.assertEqual(req.status, PaymentRequest.APPROVED)
+        self.assertEqual(req.status, PaymentRequest.FAILED)
+
+    def test_retry_from_failed_marks_request_paid(self):
+        """A retry from FAILED with a new key succeeds and moves the request to PAID."""
+        req = make_approved_request(self.alice)
+        self._auth(self.faith)
+
+        r1 = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"description": "FAIL", "idempotency_key": str(uuid4())}
+        )
+        self.assertEqual(r1.data["status"], "FAILED")
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.FAILED)
+
+        r2 = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"idempotency_key": str(uuid4())}
+        )
+        self.assertEqual(r2.status_code, 201)
+        self.assertEqual(r2.data["status"], "SUCCESS")
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.PAID)
 
     def test_retry_after_decline(self):
         """After FAILED, new payment with new key succeeds."""
@@ -340,6 +363,135 @@ class PaymentViewTests(TestCase):
         self._auth(self.alice)
         r = self.client.get("/api/payments/transactions/")
         self.assertEqual(r.status_code, 403)
+
+
+class AmountOverrideTests(TestCase):
+    """The approved amount is authoritative; the pay body cannot override it."""
+
+    def setUp(self):
+        self.alice = make_user("alice", Profile.EMPLOYEE)
+        self.faith = make_user("faith", Profile.FINANCE)
+        self.client = APIClient()
+
+    def _auth(self, user):
+        self.client.force_authenticate(user)
+
+    def test_amount_in_body_is_rejected(self):
+        """A request approved at 24,500 sending {"amount": "500000"} is rejected, not charged."""
+        req = make_approved_request(self.alice, amount="24500.00")
+        self._auth(self.faith)
+
+        response = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"amount": "500000"},
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("amount", response.data["detail"])
+
+        # Nothing was written and the request is untouched.
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.APPROVED)
+        self.assertEqual(PaymentTransaction.objects.count(), 0)
+
+    def test_charged_amount_is_the_approved_amount(self):
+        """The transaction records (and the gateway is charged) the approved amount."""
+        req = make_approved_request(self.alice, amount="24500.00")
+        self._auth(self.faith)
+
+        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["amount"], "24500.00")
+        self.assertEqual(Decimal(response.data["amount"]), Decimal("24500.00"))
+
+
+class UnknownGatewayTests(TestCase):
+    """An unknown gateway must fail cleanly without stranding the request."""
+
+    def setUp(self):
+        self.alice = make_user("alice", Profile.EMPLOYEE)
+        self.faith = make_user("faith", Profile.FINANCE)
+        self.client = APIClient()
+        self._auth(self.faith)
+
+    def _auth(self, user):
+        self.client.force_authenticate(user)
+
+    def test_unknown_gateway_returns_422_and_leaves_request_approved(self):
+        req = make_approved_request(self.alice)
+        response = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"gateway": "nope"},
+        )
+        self.assertEqual(response.status_code, 422)
+
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.APPROVED)
+        self.assertFalse(
+            PaymentTransaction.objects.filter(request=req).exists(),
+            "No transaction should be created for an unknown gateway",
+        )
+
+    def test_retry_after_unknown_gateway_is_not_blocked(self):
+        """Regression: unknown gateway must not leave a PROCESSING row that 409s retries."""
+        req = make_approved_request(self.alice)
+
+        bad = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"gateway": "nope"},
+        )
+        self.assertEqual(bad.status_code, 422)
+
+        good = self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"gateway": "mock"},
+        )
+        self.assertEqual(good.status_code, 201)
+        self.assertEqual(good.data["status"], "SUCCESS")
+
+
+class _BoomGateway:
+    """Stub gateway whose charge always raises, to simulate a provider outage."""
+
+    def charge(self, **kwargs):
+        raise RuntimeError("provider unreachable")
+
+
+class GatewayExceptionTests(TestCase):
+    """A gateway exception records a FAILED attempt instead of stranding PROCESSING."""
+
+    def setUp(self):
+        self.alice = make_user("alice", Profile.EMPLOYEE)
+        self.faith = make_user("faith", Profile.FINANCE)
+        self.client = APIClient()
+        self.client.force_authenticate(self.faith)
+
+    def test_gateway_exception_returns_502_and_marks_failed(self):
+        req = make_approved_request(self.alice)
+
+        with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
+            response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("transaction", response.data)
+
+        # The attempt is FAILED (never PROCESSING) and the request shows FAILED.
+        txn = PaymentTransaction.objects.get(request=req)
+        self.assertEqual(txn.status, PaymentTransaction.FAILED)
+        self.assertIn("provider unreachable", txn.provider_reason)
+
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.FAILED)
+
+    def test_retry_after_gateway_exception_succeeds(self):
+        req = make_approved_request(self.alice)
+
+        with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
+            first = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(first.status_code, 502)
+
+        second = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(second.data["status"], "SUCCESS")
 
 
 class PaymentTransactionModelTests(TestCase):

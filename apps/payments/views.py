@@ -1,5 +1,4 @@
 """Payment API views."""
-from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 
 from rest_framework import status
@@ -11,7 +10,7 @@ from rest_framework.response import Response
 from apps.accounts.models import Profile
 from apps.payment_requests.models import PaymentRequest
 from apps.payments.models import PaymentTransaction
-from apps.payments.services import PaymentDenied, initiate_payment
+from apps.payments.services import PaymentDenied, PaymentGatewayError, initiate_payment
 
 
 def _get_role(user):
@@ -37,18 +36,22 @@ def pay_payment_request(request: Request, pk: int) -> Response:
     Body (all optional):
     {
         "idempotency_key": "uuid-v4",        # generated if omitted
-        "amount": "75000.00",                # defaults to request amount
         "currency": "KES",                   # defaults to KES
         "gateway": "mock",                   # defaults to mock
         "description": "..."                 # sent to gateway; "FAIL" triggers mock decline
     }
 
+    The amount charged is always the request's approved amount. An "amount"
+    field is rejected with 422.
+
     Returns:
     - 200: Payment initiated (or replayed)
+    - 201: Payment attempt recorded (SUCCESS or FAILED)
     - 403: Not Finance role
     - 404: Request not found or not visible
-    - 409: Request not payable / already paid / idempotency key mismatch
-    - 422: Validation error
+    - 409: Request not payable / already paid / a payment is already in flight
+    - 422: Unknown gateway, or an "amount" was supplied
+    - 502: Gateway raised; attempt recorded FAILED and request marked FAILED
     """
     try:
         payment_request = PaymentRequest.objects.select_related("vendor").get(pk=pk)
@@ -58,16 +61,15 @@ def pay_payment_request(request: Request, pk: int) -> Response:
     # Finance can see all requests (per Part A visibility rules)
     # No additional filtering needed
 
+    # The approved amount is authoritative; reject any attempt to override it.
+    if "amount" in request.data:
+        return Response(
+            {"detail": "amount is not accepted; the approved amount is charged."},
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
     # Idempotency key: client provides or we generate one
     idempotency_key = request.data.get("idempotency_key") or str(uuid4())
-
-    # Optional overrides
-    amount = request.data.get("amount")
-    if amount is not None:
-        try:
-            amount = Decimal(str(amount))
-        except (InvalidOperation, ValueError):
-            return Response({"detail": "Invalid amount."}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
     currency = request.data.get("currency", "KES")
     gateway = request.data.get("gateway", "mock")
@@ -78,12 +80,16 @@ def pay_payment_request(request: Request, pk: int) -> Response:
             payment_request=payment_request,
             idempotency_key=idempotency_key,
             gateway_name=gateway,
-            amount=amount,
             currency=currency,
             description=description,
         )
     except PaymentDenied as e:
         return Response({"detail": e.reason}, status=status.HTTP_409_CONFLICT)
+    except PaymentGatewayError as e:
+        body = {"detail": e.reason}
+        if e.transaction is not None:
+            body["transaction"] = e.transaction.pk
+        return Response(body, status=status.HTTP_502_BAD_GATEWAY)
     except KeyError as e:
         return Response({"detail": str(e)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
