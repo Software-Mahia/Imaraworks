@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -197,10 +197,10 @@
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who">Alice Mwangi · Employee</div>
+  <div class="who" id="who"></div>
 </header>
 
-<main class="container">
+<main class="container" id="app" hidden>
   <div class="page-head">
     <h1>My payment requests</h1>
     <button class="btn-primary" id="toggle-form-btn">+ New request</button>
@@ -261,6 +261,7 @@
   </section>
 </main>
 
+<script src="{% static 'frontend/auth.js' %}"></script>
 <script>
   // ---- PLACEHOLDER DATA ----
   // Remove this block once Tamira's endpoint is ready, and use loadRequests() below instead.
@@ -354,6 +355,14 @@
     form.reset();
     panel.hidden = true;
   });
+  // ---- Role check: only an EMPLOYEE may see this page. Convenience only; the API enforces the rules. ----
+  (async () => {
+    const me = await AUTH.requireRole(["EMPLOYEE"]);
+    if (!me) return;   // wrong role or no session: the browser is already being redirected
+    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
+    document.getElementById("who").textContent = `${name} · Employee`;
+    document.getElementById("app").hidden = false;
+  })();
 </script>
 
 </body>
