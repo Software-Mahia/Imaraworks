@@ -8,9 +8,8 @@ what goes in the audit log.
 Why split "decide" from "save"
 ------------------------------
 ``decide_approval`` is pure: plain data in, an ``ApprovalDecision`` out, no
-database. That makes every branch testable today, before the Approval and
-AuditLog models exist. Once they land, a thin
-``approve(request, user)`` wrapper will:
+database, so every rule is testable without one. The thin
+``approve(payment_request, user)`` wrapper then does the saving:
 
     with transaction.atomic():
         lock the request row (select_for_update)
@@ -25,12 +24,17 @@ so the wrapper holds no business rules -- it only reads and writes.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from django.db import transaction
+
+from apps.accounts.permissions import get_role
 from apps.approvals.logic import (
     approver_level,
     evaluate_approval,
     is_fully_approved,
     required_levels,
 )
+from apps.approvals.models import Approval
+from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest
 
 # Status values come straight from A's PaymentRequest so there is one source of
@@ -42,10 +46,10 @@ STATUS_PENDING = PaymentRequest.PENDING_APPROVAL
 STATUS_APPROVED = PaymentRequest.APPROVED
 STATUS_REJECTED = PaymentRequest.REJECTED
 
-# Audit action names. Placeholders until the team agrees the audit format.
-AUDIT_APPROVED = "APPROVED"
-AUDIT_REJECTED = "REJECTED"
-AUDIT_AMOUNT_CHANGED = "AMOUNT_CHANGED"
+# Audit action names come from AuditLog, the team's one audit vocabulary.
+AUDIT_APPROVED = AuditLog.APPROVED
+AUDIT_REJECTED = AuditLog.REJECTED
+AUDIT_AMOUNT_CHANGED = AuditLog.AMOUNT_CHANGED
 
 MSG_REASON_REQUIRED = "A reason is required to reject a request."
 MSG_AMOUNT_LOCKED = "The amount can no longer be changed for this request."
@@ -115,6 +119,107 @@ def decide_approval(*, role, is_requester, status, amount, approved_levels):
     )
 
 
+def _counting_levels(payment_request):
+    """Levels whose approval still counts: approved and not superseded.
+
+    Filters in Python over ``approvals.all()`` rather than with .filter(), so a
+    list of requests loaded with prefetch_related("approvals") costs one query
+    in total instead of one per request.
+    """
+    return {
+        a.level for a in payment_request.approvals.all()
+        if a.decision == Approval.APPROVED and not a.superseded
+    }
+
+
+def approval_summary(payment_request):
+    """The API's ``approval`` block: which levels are needed, done and still to do.
+
+    Lists are sorted so the JSON is the same every time.
+    """
+    required = required_levels(payment_request.amount)
+    approved = _counting_levels(payment_request) & required
+    return {
+        "required_levels": sorted(required),
+        "approved_levels": sorted(approved),
+        "outstanding_levels": sorted(required - approved),
+    }
+
+
+def approval_queue(user):
+    """Requests ``user`` could approve right now, oldest first.
+
+    Rather than restating the rules as a database filter, each pending request
+    is run through the same evaluate_approval() that approve() uses. So the
+    queue can never list a request that approve() would then refuse. The
+    database filter only narrows the candidates (pending, not created by user).
+    """
+    role = get_role(user)
+    if approver_level(role) is None:
+        return []
+    candidates = (
+        PaymentRequest.objects
+        .filter(status=STATUS_PENDING)
+        .exclude(requester=user)
+        .prefetch_related("approvals")
+        .order_by("created_at")
+    )
+    return [
+        req for req in candidates
+        if evaluate_approval(
+            role=role,
+            is_requester=False,
+            is_pending=True,
+            amount=req.amount,
+            approved_levels=_counting_levels(req),
+        )[0]
+    ]
+
+
+def approve(payment_request, user):
+    """Record ``user`` approving ``payment_request``. Returns the ApprovalDecision.
+
+    Raises ApprovalDenied (nothing written) if the rules say no.
+
+    This is the "save" half: it reads, calls decide_approval for every rule,
+    then writes. All of it runs in one transaction, so the Approval row, the
+    new status and the audit entry are saved together or not at all.
+
+    The request is re-read under a row lock (select_for_update) rather than
+    trusting the object passed in. That way two approvers acting at once are
+    handled one after the other, and the second one sees the first one's
+    approval. The one_active_approval_per_level constraint is the final backstop.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_approval(
+            role=get_role(user),
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            amount=locked.amount,
+            approved_levels=_counting_levels(locked),
+        )
+
+        Approval.objects.create(
+            request=locked,
+            approver=user,
+            decision=Approval.APPROVED,
+            level=decision.level,
+        )
+        if locked.status != decision.new_status:
+            locked.status = decision.new_status
+            locked.save(update_fields=["status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
+
+
 @dataclass(frozen=True)
 class RejectionDecision:
     """Everything the save step needs to write for a reject."""
@@ -168,6 +273,44 @@ def decide_rejection(*, role, is_requester, status, amount, approved_levels, rea
             "reason": cleaned,
         },
     )
+
+
+def reject(payment_request, user, reason):
+    """Record ``user`` rejecting ``payment_request``. Returns the RejectionDecision.
+
+    Raises ApprovalDenied (nothing written) if the user may not reject or the
+    reason is blank. Same shape as approve(): lock, decide, then write the
+    Approval row, the REJECTED status and the audit entry in one transaction.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_rejection(
+            role=get_role(user),
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            amount=locked.amount,
+            approved_levels=_counting_levels(locked),
+            reason=reason,
+        )
+
+        Approval.objects.create(
+            request=locked,
+            approver=user,
+            decision=Approval.REJECTED,
+            level=decision.level,
+            reason=decision.reason,
+        )
+        locked.status = decision.new_status
+        locked.save(update_fields=["status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
 
 
 class AmountChangeDenied(Exception):
