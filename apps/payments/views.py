@@ -78,6 +78,7 @@ def pay_payment_request(request: Request, pk: int) -> Response:
     try:
         result = initiate_payment(
             payment_request=payment_request,
+            actor=request.user,
             idempotency_key=idempotency_key,
             gateway_name=gateway,
             currency=currency,

@@ -5,9 +5,11 @@ OUTSIDE the database transaction to avoid holding locks during external calls.
 """
 from dataclasses import dataclass
 
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 
+from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest
 from apps.payments.gateways import ChargeResult, PaymentGateway, get_gateway
 from apps.payments.models import PaymentTransaction
@@ -49,6 +51,7 @@ class PaymentResult:
 def initiate_payment(
     *,
     payment_request: PaymentRequest,
+    actor: User,
     idempotency_key: str,
     gateway_name: str = "mock",
     currency: str = "KES",
@@ -58,6 +61,11 @@ def initiate_payment(
 
     The amount charged is always the request's approved amount, read under the
     row lock; callers cannot override it.
+
+    Audit: a PAYMENT_STARTED entry is written alongside the PROCESSING
+    transaction, then a PAID or PAYMENT_FAILED entry alongside the final status.
+    Each entry is written in the same transaction as the status change it
+    records, and the Finance user is recorded as the actor.
 
     Idempotency:
     - If `idempotency_key` already exists for this request, return the existing
@@ -73,6 +81,7 @@ def initiate_payment(
 
     Args:
         payment_request: The approved payment request.
+        actor: The Finance user initiating the payment; recorded in the audit log.
         idempotency_key: Client-provided unique key (e.g., UUID). Must be unique per request.
         gateway_name: Registered gateway name (default: "mock").
         currency: ISO currency code (default: "KES").
@@ -131,6 +140,13 @@ def initiate_payment(
         locked_request.status = PaymentRequest.PROCESSING
         locked_request.save(update_fields=["status", "updated_at"])
 
+        AuditLog.objects.create(
+            request=locked_request,
+            actor=actor,
+            action=AuditLog.PAYMENT_STARTED,
+            details={"transaction": txn.pk, "amount": str(charge_amount)},
+        )
+
     # --- Step 2: Call gateway OUTSIDE the transaction ---
     # A gateway exception must not leave the attempt in PROCESSING: turn it into a
     # FAILED charge result, record it below, then signal 502 to the caller.
@@ -162,6 +178,16 @@ def initiate_payment(
             locked_request.status = PaymentRequest.PAID
             locked_request.save(update_fields=["status", "updated_at"])
 
+            AuditLog.objects.create(
+                request=locked_request,
+                actor=actor,
+                action=AuditLog.PAID,
+                details={
+                    "transaction": txn.pk,
+                    "provider_reference": charge_result.reference,
+                },
+            )
+
         else:
             txn.status = PaymentTransaction.FAILED
             txn.provider_reason = charge_result.reason or "Provider declined"
@@ -172,6 +198,13 @@ def initiate_payment(
             locked_request = PaymentRequest.objects.select_for_update().get(pk=locked_request.pk)
             locked_request.status = PaymentRequest.FAILED
             locked_request.save(update_fields=["status", "updated_at"])
+
+            AuditLog.objects.create(
+                request=locked_request,
+                actor=actor,
+                action=AuditLog.PAYMENT_FAILED,
+                details={"transaction": txn.pk, "reason": txn.provider_reason},
+            )
 
         txn.save(update_fields=["status", "provider_reference", "provider_reason", "completed_at", "updated_at"])
 

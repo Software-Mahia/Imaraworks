@@ -11,6 +11,7 @@ from django.test import TestCase, TransactionTestCase
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Profile
+from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest, Project
 from apps.payments.models import PaymentTransaction
 from apps.payments.services import PaymentDenied, initiate_payment
@@ -55,7 +56,7 @@ class MockGatewayDeclineTests(TestCase):
     def test_mock_succeeds_by_default(self):
         req = make_approved_request(self.alice)
         key = str(uuid4())
-        result = initiate_payment(payment_request=req, idempotency_key=key)
+        result = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
         self.assertEqual(result.transaction.status, PaymentTransaction.SUCCESS)
         self.assertTrue(result.charge_result.status == "SUCCESS")
 
@@ -63,6 +64,7 @@ class MockGatewayDeclineTests(TestCase):
         req = make_approved_request(self.alice)
         key = str(uuid4())
         result = initiate_payment(
+            actor=self.alice,
             payment_request=req,
             idempotency_key=key,
             description="Request #1 - Test Vendor - FAIL this payment",
@@ -75,6 +77,7 @@ class MockGatewayDeclineTests(TestCase):
         req = make_approved_request(self.alice)
         key = str(uuid4())
         result = initiate_payment(
+            actor=self.alice,
             payment_request=req,
             idempotency_key=key,
             description="please fail this one",
@@ -92,8 +95,8 @@ class IdempotencyTests(TestCase):
         req = make_approved_request(self.alice)
         key = str(uuid4())
 
-        result1 = initiate_payment(payment_request=req, idempotency_key=key)
-        result2 = initiate_payment(payment_request=req, idempotency_key=key)
+        result1 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
+        result2 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
 
         self.assertTrue(result2.replayed)
         self.assertEqual(result1.transaction.pk, result2.transaction.pk)
@@ -105,12 +108,12 @@ class IdempotencyTests(TestCase):
         key1 = str(uuid4())
         key2 = str(uuid4())
 
-        result1 = initiate_payment(payment_request=req, idempotency_key=key1)
+        result1 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key1)
         self.assertEqual(result1.transaction.status, PaymentTransaction.SUCCESS)
 
         # Second attempt with different key should be denied
         with self.assertRaises(PaymentDenied) as ctx:
-            initiate_payment(payment_request=req, idempotency_key=key2)
+            initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key2)
         self.assertIn("already been paid", ctx.exception.reason)
 
     def test_key_reuse_on_different_request_allowed(self):
@@ -120,11 +123,11 @@ class IdempotencyTests(TestCase):
         key = str(uuid4())
 
         # Pay req1 with key
-        result1 = initiate_payment(payment_request=req1, idempotency_key=key)
+        result1 = initiate_payment(actor=self.alice, payment_request=req1, idempotency_key=key)
         self.assertEqual(result1.transaction.status, PaymentTransaction.SUCCESS)
 
         # Pay req2 with same key - should work (different request)
-        result2 = initiate_payment(payment_request=req2, idempotency_key=key)
+        result2 = initiate_payment(actor=self.alice, payment_request=req2, idempotency_key=key)
         self.assertEqual(result2.transaction.status, PaymentTransaction.SUCCESS)
         self.assertNotEqual(result1.transaction.pk, result2.transaction.pk)
 
@@ -135,6 +138,7 @@ class IdempotencyTests(TestCase):
 
         # First attempt fails
         result1 = initiate_payment(
+            actor=self.alice,
             payment_request=req,
             idempotency_key=key1,
             description="FAIL",
@@ -143,7 +147,7 @@ class IdempotencyTests(TestCase):
 
         # Retry with new key should succeed
         key2 = str(uuid4())
-        result2 = initiate_payment(payment_request=req, idempotency_key=key2)
+        result2 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key2)
         self.assertEqual(result2.transaction.status, PaymentTransaction.SUCCESS)
 
 
@@ -168,7 +172,7 @@ class ConcurrencyTests(TransactionTestCase):
             # Small stagger to reduce SQLite lock contention in test
             time.sleep(0.01)
             try:
-                result = initiate_payment(payment_request=req, idempotency_key=key)
+                result = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
                 results.append(result)
             except (PaymentDenied, OperationalError) as e:
                 errors.append(e)
@@ -492,6 +496,64 @@ class GatewayExceptionTests(TestCase):
         second = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
         self.assertEqual(second.status_code, 201)
         self.assertEqual(second.data["status"], "SUCCESS")
+
+
+class AuditTrailTests(TestCase):
+    """Each payment transition writes its own audit entry."""
+
+    def setUp(self):
+        self.alice = make_user("alice", Profile.EMPLOYEE)
+        self.faith = make_user("faith", Profile.FINANCE)
+        self.client = APIClient()
+        self.client.force_authenticate(self.faith)
+
+    def _entries(self, req):
+        return list(AuditLog.objects.filter(request=req).order_by("timestamp", "pk"))
+
+    def test_success_writes_started_then_paid(self):
+        req = make_approved_request(self.alice, amount="24500.00")
+        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(response.status_code, 201)
+
+        entries = self._entries(req)
+        self.assertEqual([e.action for e in entries], [AuditLog.PAYMENT_STARTED, AuditLog.PAID])
+
+        started, paid = entries
+        self.assertEqual(started.actor, self.faith)
+        self.assertEqual(started.details["transaction"], response.data["id"])
+        self.assertEqual(started.details["amount"], "24500.00")
+        self.assertEqual(paid.actor, self.faith)
+        self.assertEqual(paid.details["provider_reference"], response.data["provider_reference"])
+
+    def test_decline_writes_started_then_failed(self):
+        req = make_approved_request(self.alice)
+        self.client.post(
+            f"/api/payments/payment-requests/{req.pk}/pay/",
+            {"description": "FAIL", "idempotency_key": str(uuid4())},
+        )
+
+        entries = self._entries(req)
+        self.assertEqual([e.action for e in entries], [AuditLog.PAYMENT_STARTED, AuditLog.PAYMENT_FAILED])
+        self.assertIn("FAIL", entries[1].details["reason"].upper())
+
+    def test_gateway_exception_writes_failed_entry(self):
+        req = make_approved_request(self.alice)
+        with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
+            response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(response.status_code, 502)
+
+        entries = self._entries(req)
+        self.assertEqual([e.action for e in entries], [AuditLog.PAYMENT_STARTED, AuditLog.PAYMENT_FAILED])
+        self.assertIn("provider unreachable", entries[1].details["reason"])
+
+    def test_replay_does_not_duplicate_audit_entries(self):
+        req = make_approved_request(self.alice)
+        key = str(uuid4())
+        self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+        self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+
+        entries = self._entries(req)
+        self.assertEqual([e.action for e in entries], [AuditLog.PAYMENT_STARTED, AuditLog.PAID])
 
 
 class PaymentTransactionModelTests(TestCase):
