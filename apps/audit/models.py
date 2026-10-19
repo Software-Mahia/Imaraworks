@@ -4,6 +4,22 @@ from django.db import models
 from apps.payment_requests.models import PaymentRequest
 
 
+class AuditLogQuerySet(models.QuerySet):
+    """Blocks the bulk paths too.
+
+    QuerySet.update() and .delete() write straight to the database without
+    calling the model's save() or delete(), so the guards on AuditLog alone
+    would not stop them. bulk_update() goes through update(), so it is
+    blocked as well.
+    """
+
+    def update(self, **kwargs):
+        raise ValueError("Audit log entries can't be changed once written.")
+
+    def delete(self):
+        raise ValueError("Audit log entries can't be deleted.")
+
+
 class AuditLog(models.Model):
     """One recorded action on a payment request: who did what, when.
 
@@ -38,6 +54,8 @@ class AuditLog(models.Model):
     # Action-specific facts, e.g. {"level": "manager", "amount": "67000"}.
     details = models.JSONField(default=dict, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    objects = AuditLogQuerySet.as_manager()
 
     class Meta:
         ordering = ['timestamp']
