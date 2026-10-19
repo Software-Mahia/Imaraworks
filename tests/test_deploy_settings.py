@@ -5,6 +5,7 @@ The rules are tested as pure functions on a plain dict, so no test has to
 reload Django's settings or touch the real environment.
 """
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
@@ -65,3 +66,24 @@ class AllowedHostsFromTests(SimpleTestCase):
 
     def test_ignores_empty_entries(self):
         self.assertEqual(allowed_hosts_from({'DJANGO_ALLOWED_HOSTS': 'a.com,,'}), ['a.com'])
+
+
+class SettingsLayoutTests(SimpleTestCase):
+    """Issue #24: settings are split into base, dev and prod."""
+
+    def test_base_dir_is_the_project_root(self):
+        # base.py sits one folder deeper than the old settings.py. If BASE_DIR
+        # were not adjusted, the database and static paths would point inside
+        # imaraworks/ instead of the project root.
+        self.assertTrue((settings.BASE_DIR / 'manage.py').is_file())
+
+    def test_manage_py_defaults_to_dev_and_server_entry_points_to_prod(self):
+        root = settings.BASE_DIR
+        expected = {
+            'manage.py': 'imaraworks.settings.dev',
+            'imaraworks/wsgi.py': 'imaraworks.settings.prod',
+            'imaraworks/asgi.py': 'imaraworks.settings.prod',
+        }
+        for path, module in expected.items():
+            with self.subTest(path=path):
+                self.assertIn(f"'{module}'", (root / path).read_text(encoding='utf-8'))

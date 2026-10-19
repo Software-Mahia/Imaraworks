@@ -1,7 +1,7 @@
 """
 Read deployment settings from environment variables (issue #21).
 
-The rules live here, not inline in settings.py, so they can be unit-tested
+The rules live here, not inline in settings/base.py, so they can be unit-tested
 with a plain dict instead of reloading Django's settings.
 
 Everything fails safe: if a variable is forgotten on the deployed demo, the
