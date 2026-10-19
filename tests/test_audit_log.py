@@ -8,6 +8,7 @@ import datetime
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 
@@ -68,6 +69,39 @@ class AuditLogTests(TestCase):
         entry = self._log()
         with self.assertRaises(ValueError):
             entry.delete()
+        self.assertTrue(AuditLog.objects.filter(pk=entry.pk).exists())
+
+    # Bulk queryset calls skip the model's save()/delete(), so they need their own guard.
+    def _querysets(self, entry):
+        """Both ways code reaches the log: the model's manager and a request's related manager."""
+        return [
+            ('AuditLog.objects', AuditLog.objects.filter(pk=entry.pk)),
+            ('request.audit_logs', self.request.audit_logs.all()),
+        ]
+
+    def test_entries_cannot_be_bulk_updated(self):
+        entry = self._log()
+        for via, qs in self._querysets(entry):
+            with self.subTest(via=via), self.assertRaises(ValueError):
+                qs.update(action=AuditLog.PAID)
+        entry.refresh_from_db()
+        self.assertEqual(entry.action, AuditLog.APPROVED)
+
+    def test_entries_cannot_be_bulk_updated_with_bulk_update(self):
+        entry = self._log()
+        entry.action = AuditLog.PAID
+        # bulk_update runs inside its own atomic block, so the error breaks the
+        # surrounding transaction. A savepoint lets the test keep querying.
+        with self.assertRaises(ValueError), transaction.atomic():
+            AuditLog.objects.bulk_update([entry], ['action'])
+        entry.refresh_from_db()
+        self.assertEqual(entry.action, AuditLog.APPROVED)
+
+    def test_entries_cannot_be_bulk_deleted(self):
+        entry = self._log()
+        for via, qs in self._querysets(entry):
+            with self.subTest(via=via), self.assertRaises(ValueError):
+                qs.delete()
         self.assertTrue(AuditLog.objects.filter(pk=entry.pk).exists())
 
     def test_request_with_history_cannot_be_deleted(self):
