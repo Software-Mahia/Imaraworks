@@ -12,28 +12,19 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 import sys
 from pathlib import Path
-
-from imaraworks.env import allowed_hosts_from, debug_from, secret_key_from
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # Three levels up: base.py -> settings/ -> imaraworks/ -> project root.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
-# Deployment settings come from environment variables, never from this file
-# (issue #21). See imaraworks/env.py for the rules and README "Setup" for usage.
+# DEBUG, SECRET_KEY, ALLOWED_HOSTS and DATABASES differ per environment, so
+# they are set in dev.py and prod.py, not here (issue #24).
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 TESTING = 'test' in sys.argv
-
-DEBUG = debug_from(os.environ)
-
-SECRET_KEY = secret_key_from(os.environ, debug=DEBUG, testing=TESTING)
-
-ALLOWED_HOSTS = allowed_hosts_from(os.environ)
 
 
 # Application definition
@@ -94,17 +85,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'imaraworks.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
 
 
 # Password validation
