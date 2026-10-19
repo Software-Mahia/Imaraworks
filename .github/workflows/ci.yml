@@ -36,11 +36,12 @@ jobs:
         # Fails the build if prod.py loses any of Django's deployment
         # protections (HTTPS redirect, secure cookies, HSTS, DEBUG off) (#24).
         # The values are stand-ins: the key is generated fresh each run, so no
-        # secret is committed, and SQLite avoids needing a Postgres server.
+        # secret is committed. The checks load the Postgres driver but never
+        # connect, so no database server is needed.
         env:
           DJANGO_SETTINGS_MODULE: imaraworks.settings.prod
           DJANGO_ALLOWED_HOSTS: ci.example.com
-          DATABASE_URL: sqlite:///ci-check.sqlite3
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
         run: |
           export DJANGO_SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key as g; print(g())')"
           python manage.py check --deploy --fail-level WARNING

@@ -81,6 +81,12 @@ class DatabaseFromTests(SimpleTestCase):
             with self.subTest(environ=environ), self.assertRaises(ImproperlyConfigured):
                 database_from(environ)
 
+    def test_postgres_driver_is_installed(self):
+        # Prod runs on Postgres, and Django can't load its Postgres backend
+        # without psycopg. Without this test, a missing driver shows up only
+        # when the deployed app first touches the database.
+        importlib.import_module('django.db.backends.postgresql.base')
+
 
 class DevOnServerGuardTests(SimpleTestCase):
     """Dev settings must not run on the server, e.g. `manage.py migrate` without
