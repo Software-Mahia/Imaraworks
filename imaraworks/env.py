@@ -17,6 +17,11 @@ DEV_SECRET_KEY = 'django-insecure-dev-only-not-for-the-deployed-demo'
 
 DEFAULT_ALLOWED_HOSTS = 'localhost,127.0.0.1'
 
+# One hour. Browsers remember HSTS for this long, so if HTTPS breaks, visitors
+# are locked out only briefly. Raise it (e.g. to a year, 31536000) once the
+# demo has run over HTTPS without problems.
+DEFAULT_HSTS_SECONDS = 3600
+
 
 def secret_key_from(environ, *, allow_dev_key):
     """Use DJANGO_SECRET_KEY if set; else the dev key if allowed; otherwise refuse to start."""
@@ -59,6 +64,18 @@ def database_from(environ):
             'DATABASE_URL is not set. Set it to the production database\'s connection URL.'
         )
     return dj_database_url.parse(url, conn_max_age=600)
+
+
+def hsts_seconds_from(environ):
+    """DJANGO_HSTS_SECONDS as a whole number of seconds, defaulting to one hour."""
+    raw = environ.get('DJANGO_HSTS_SECONDS')
+    if raw is None:
+        return DEFAULT_HSTS_SECONDS
+    if not raw.strip().isdigit():
+        raise ImproperlyConfigured(
+            f'DJANGO_HSTS_SECONDS must be a whole number of seconds, not {raw!r}.'
+        )
+    return int(raw)
 
 
 def refuse_dev_settings_on_server(environ):

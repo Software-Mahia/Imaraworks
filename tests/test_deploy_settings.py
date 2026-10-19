@@ -18,6 +18,7 @@ from imaraworks.env import (
     DEV_SECRET_KEY,
     allowed_hosts_from,
     database_from,
+    hsts_seconds_from,
     refuse_dev_settings_on_server,
     secret_key_from,
 )
@@ -93,6 +94,21 @@ class DevOnServerGuardTests(SimpleTestCase):
         refuse_dev_settings_on_server({})   # no error
 
 
+class HstsSecondsFromTests(SimpleTestCase):
+    """HSTS starts short (1 hour): browsers remember it, so a mistake must expire soon."""
+
+    def test_defaults_to_one_hour(self):
+        self.assertEqual(hsts_seconds_from({}), 3600)
+
+    def test_reads_a_whole_number(self):
+        self.assertEqual(hsts_seconds_from({'DJANGO_HSTS_SECONDS': '31536000'}), 31536000)
+
+    def test_refuses_anything_else(self):
+        for value in ('one hour', '-1', '1.5', ''):
+            with self.subTest(value=value), self.assertRaises(ImproperlyConfigured):
+                hsts_seconds_from({'DJANGO_HSTS_SECONDS': value})
+
+
 PROD_ENV = {
     'DJANGO_SECRET_KEY': 'a-real-random-key-for-the-demo',
     'DJANGO_ALLOWED_HOSTS': 'imaraworks.onrender.com',
@@ -129,6 +145,23 @@ class SettingsModuleTests(SimpleTestCase):
         self.assertEqual(prod.SECRET_KEY, PROD_ENV['DJANGO_SECRET_KEY'])
         self.assertEqual(prod.ALLOWED_HOSTS, ['imaraworks.onrender.com'])
         self.assertEqual(prod.DATABASES['default']['ENGINE'], 'django.db.backends.postgresql')
+
+    def test_prod_serves_https_only(self):
+        prod = load_settings('imaraworks.settings.prod', PROD_ENV)
+        # Render ends HTTPS and forwards plain HTTP with this header. Without it
+        # Django would see every request as insecure and redirect forever.
+        self.assertEqual(prod.SECURE_PROXY_SSL_HEADER, ('HTTP_X_FORWARDED_PROTO', 'https'))
+        self.assertTrue(prod.SECURE_SSL_REDIRECT)
+        self.assertTrue(prod.SESSION_COOKIE_SECURE)
+        self.assertTrue(prod.CSRF_COOKIE_SECURE)
+        self.assertEqual(prod.SECURE_HSTS_SECONDS, 3600)
+        self.assertTrue(prod.SECURE_HSTS_INCLUDE_SUBDOMAINS)
+
+    def test_dev_stays_on_plain_http(self):
+        # runserver has no HTTPS, so dev must not redirect to it.
+        dev = load_settings('imaraworks.settings.dev', {})
+        self.assertFalse(getattr(dev, 'SECURE_SSL_REDIRECT', False))
+        self.assertFalse(getattr(dev, 'SESSION_COOKIE_SECURE', False))
 
     def test_prod_refuses_to_start_without_each_required_variable(self):
         for missing in PROD_ENV:
