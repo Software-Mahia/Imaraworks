@@ -22,6 +22,8 @@ from apps.payment_requests.views import ProjectList
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.accounts.urls')),
+    path('api/', include('apps.approvals.urls')),
+    path('api/', include('apps.audit.urls')),
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/payment-requests/', include('apps.payment_requests.urls')),

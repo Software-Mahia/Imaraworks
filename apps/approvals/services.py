@@ -26,6 +26,7 @@ from decimal import Decimal
 
 from django.db import transaction
 
+from apps.accounts.permissions import get_role
 from apps.approvals.logic import (
     approver_level,
     evaluate_approval,
@@ -118,23 +119,61 @@ def decide_approval(*, role, is_requester, status, amount, approved_levels):
     )
 
 
-def _role_of(user):
-    """The user's Profile role, or None if they have no profile.
-
-    Same behaviour as get_role() in PR #2 (apps/accounts/permissions.py);
-    switch to that once it is merged.
-    """
-    profile = getattr(user, "profile", None)
-    return profile.role if profile else None
-
-
 def _counting_levels(payment_request):
-    """Levels whose approval still counts: approved and not superseded."""
-    return set(
-        payment_request.approvals
-        .filter(decision=Approval.APPROVED, superseded=False)
-        .values_list("level", flat=True)
+    """Levels whose approval still counts: approved and not superseded.
+
+    Filters in Python over ``approvals.all()`` rather than with .filter(), so a
+    list of requests loaded with prefetch_related("approvals") costs one query
+    in total instead of one per request.
+    """
+    return {
+        a.level for a in payment_request.approvals.all()
+        if a.decision == Approval.APPROVED and not a.superseded
+    }
+
+
+def approval_summary(payment_request):
+    """The API's ``approval`` block: which levels are needed, done and still to do.
+
+    Lists are sorted so the JSON is the same every time.
+    """
+    required = required_levels(payment_request.amount)
+    approved = _counting_levels(payment_request) & required
+    return {
+        "required_levels": sorted(required),
+        "approved_levels": sorted(approved),
+        "outstanding_levels": sorted(required - approved),
+    }
+
+
+def approval_queue(user):
+    """Requests ``user`` could approve right now, oldest first.
+
+    Rather than restating the rules as a database filter, each pending request
+    is run through the same evaluate_approval() that approve() uses. So the
+    queue can never list a request that approve() would then refuse. The
+    database filter only narrows the candidates (pending, not created by user).
+    """
+    role = get_role(user)
+    if approver_level(role) is None:
+        return []
+    candidates = (
+        PaymentRequest.objects
+        .filter(status=STATUS_PENDING)
+        .exclude(requester=user)
+        .prefetch_related("approvals")
+        .order_by("created_at")
     )
+    return [
+        req for req in candidates
+        if evaluate_approval(
+            role=role,
+            is_requester=False,
+            is_pending=True,
+            amount=req.amount,
+            approved_levels=_counting_levels(req),
+        )[0]
+    ]
 
 
 def approve(payment_request, user):
@@ -155,7 +194,7 @@ def approve(payment_request, user):
         locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
 
         decision = decide_approval(
-            role=_role_of(user),
+            role=get_role(user),
             is_requester=(locked.requester_id == user.id),
             status=locked.status,
             amount=locked.amount,
@@ -247,7 +286,7 @@ def reject(payment_request, user, reason):
         locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
 
         decision = decide_rejection(
-            role=_role_of(user),
+            role=get_role(user),
             is_requester=(locked.requester_id == user.id),
             status=locked.status,
             amount=locked.amount,

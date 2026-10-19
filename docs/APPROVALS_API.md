@@ -1,6 +1,6 @@
 # API Contract (Part B: approvals and audit)
 
-Status: **planned, not built yet.** This is the agreed shape so the frontend can build against it. Last updated: 2026-10-14.
+Status: **built** (PR "Part B: approvals and audit endpoints"). Last updated: 2026-10-15.
 
 Same conventions as [API.md](API.md): JSON everywhere, `Authorization: Bearer <access token>` on every call, errors as `{"detail": "..."}`.
 
@@ -84,8 +84,8 @@ Checks run in this order, and the first one that fails is returned:
 
 | Status | `detail` | When |
 |---|---|---|
-| 404 | `Not found.` | No such request, or you can't see it |
-| 403 | `Your role cannot approve payments.` | EMPLOYEE or ADMIN |
+| 404 | `Not found.` | No such request, or you can't see it (this includes every ADMIN, since admins see no requests) |
+| 403 | `Your role cannot approve payments.` | EMPLOYEE, on their own request |
 | 409 | `This request is not awaiting approval.` | Status isn't `PENDING_APPROVAL` |
 | 403 | `You cannot approve a request you created.` | Self-approval (applies to reject too) |
 | 403 | `Your approval is not required for this request.` | e.g. FINANCE on a request ≤ 50k |
@@ -107,7 +107,12 @@ You can see a request's history exactly when you can see the request (see "Who s
 - `details` depends on the action. `REJECTED` has `reason`, and `AMOUNT_CHANGED` has `old_amount`, `new_amount` and `retiered`.
 
 ### GET /api/audit/
-ADMIN only, and read-only. Admins can't see payment requests (see API.md), but they can see the whole log. Every other role gets `403`. The list is newest first, and each item has the same shape as the history entries plus `"request": <id>`.
+ADMIN only, and read-only. Admins can't see payment requests or payment data (see API.md), so they see who did what and when, but not `details` (amounts, vendors, rejection reasons). Every other role gets `403`. The list is newest first.
+```json
+[
+  {"id": 4, "action": "APPROVED", "actor_username": "carol", "timestamp": "...", "request": 12}
+]
+```
 
 Optional filter: `?action=REJECTED`.
 

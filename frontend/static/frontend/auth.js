@@ -103,7 +103,7 @@ const AUTH = (() => {
   async function getCurrentUser() {
     const res = await apiFetch("/api/auth/me/");
     if (!res.ok) throw new Error("Could not load the current user.");
-    return res.json(); // { username, first_name, last_name, role }
+    return res.json(); // { username, first_name, last_name, role }  role is null for an account with no profile
   }
 
   return {
