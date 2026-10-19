@@ -197,7 +197,7 @@
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who" id="who"></div>
+  <div class="who"><span id="who"></span> <a id="back-link" href="/login/" hidden style="color:#fff;margin-left:12px">Back to my work</a></div>
 </header>
 
 <main class="container" id="app" hidden>
@@ -355,12 +355,18 @@
     form.reset();
     panel.hidden = true;
   });
-  // ---- Role check: only an EMPLOYEE may see this page. Convenience only; the API enforces the rules. ----
+  // ---- Role check: employees, managers and Finance may raise requests here. Convenience only; the API enforces the rules. ----
   (async () => {
-    const me = await AUTH.requireRole(["EMPLOYEE"]);
+    const me = await AUTH.requireRole(["EMPLOYEE", "MANAGER", "FINANCE"], "/login/");
     if (!me) return;   // wrong role or no session: the browser is already being redirected
     const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-    document.getElementById("who").textContent = `${name} · Employee`;
+     const roleLabel = { EMPLOYEE: "Employee", MANAGER: "Manager", FINANCE: "Finance Officer" }[me.role];
+    document.getElementById("who").textContent = `${name} · ${roleLabel}`;
+    if (me.role !== "EMPLOYEE") {   // managers and Finance can raise requests too: give them a way back
+      const back = document.getElementById("back-link");
+      back.href = AUTH.homeFor(me.role);
+      back.hidden = false;
+    }
     document.getElementById("app").hidden = false;
   })();
 </script>

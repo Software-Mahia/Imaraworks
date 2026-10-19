@@ -130,7 +130,7 @@
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who" id="who"></div>  
+  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a></div>
 </header>
 
 <main class="container" id="app" hidden>
@@ -315,7 +315,6 @@
     if (btn.dataset.action === "approve") approve(id);
     if (btn.dataset.action === "reject") openReject(id);
   });
-  
   // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
   (async () => {
     const me = await AUTH.requireRole(["MANAGER"]);

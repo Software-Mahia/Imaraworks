@@ -119,8 +119,10 @@ const AUTH = (() => {
     try {
       user = await getCurrentUser();
     } catch (err) {
-      window.location.href = "/login/"; // expired session, or /me/ failed
-      return null;
+    const home = homeFor(user.role);
+    if (home) window.location.href = home;
+    else logout();   // ADMIN or no role: there is no page for them, so end the session instead of leaving tokens behind
+    return null;
     }
     if (allowedRoles.includes(user.role)) return user;
     window.location.href = homeFor(user.role) || "/login/";
