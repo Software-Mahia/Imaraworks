@@ -7,6 +7,7 @@ Same conventions as [API.md](API.md): JSON everywhere, `Authorization: Bearer <a
 ## Approval rules (enforced by the server)
 
 - **≤ KES 50,000** needs one `manager` approval. **> KES 50,000** needs `manager` **and** `finance`, in either order.
+- A new request starts as `DRAFT`. Its requester submits it, which moves it straight to `PENDING_APPROVAL`; no request is left showing `SUBMITTED`.
 - Only requests in `PENDING_APPROVAL` can be approved or rejected.
 - **Nobody can approve or reject a request they created.**
 - One rejection at any level ends the request (`REJECTED`). A reason is required.
@@ -16,7 +17,7 @@ Levels are lowercase: `manager`, `finance`. A MANAGER user approves as `manager`
 
 ## The `approval` block
 
-The queue, the amount-change response and the approve/reject responses include this block, so pages can show "Waiting on Finance" and similar:
+The queue, the submit and amount-change responses, and the approve/reject responses include this block, so pages can show "Waiting on Finance" and similar:
 
 ```json
 "approval": {
@@ -31,12 +32,33 @@ The queue, the amount-change response and the approve/reject responses include t
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
+| POST | /api/payment-requests/<id>/submit/ | The request's requester (any role) | Send a draft for approval |
 | GET | /api/approvals/queue/ | MANAGER, FINANCE | Requests waiting on **my** decision |
 | POST | /api/payment-requests/<id>/approve/ | MANAGER, FINANCE | Approve at my level |
 | POST | /api/payment-requests/<id>/reject/ | MANAGER, FINANCE | Reject with a reason |
 | PATCH | /api/payment-requests/<id>/amount/ | The request's requester (any role) | Change the amount |
 | GET | /api/payment-requests/<id>/history/ | Anyone who can see the request | Audit trail of one request |
 | GET | /api/audit/ | ADMIN | Whole audit log |
+
+### POST /api/payment-requests/<id>/submit/
+No body. Only the person who created the request can submit it, whatever their role (managers and finance raise requests too). `DRAFT` goes straight to `PENDING_APPROVAL`, and a `SUBMITTED` entry is added to the request's history.
+
+200: the full request, with the same fields as `GET /api/payment-requests/<id>/`, plus `approval`:
+```json
+{
+  "id": 7, "vendor_name": "SwiftHaul Logistics", "requester_username": "alice",
+  "amount": "67000.00", "status": "PENDING_APPROVAL", "created_at": "...",
+  "approval": {"required_levels": ["finance", "manager"], "approved_levels": [], "outstanding_levels": ["finance", "manager"]}
+}
+```
+
+Errors (checked in this order):
+
+| Status | `detail` | When |
+|---|---|---|
+| 404 | `Not found.` | No such request, or you can't see it (another employee's request, or any ADMIN) |
+| 403 | `Only the person who created this request can submit it.` | You can see it but didn't create it (e.g. a manager) |
+| 409 | `This request has already been submitted.` | Status isn't `DRAFT` (or a leftover `SUBMITTED`) |
 
 ### GET /api/approvals/queue/
 These are the requests the current user can act on right now. The request is `PENDING_APPROVAL`, needs the user's level, hasn't been approved at that level yet, and wasn't created by the user. The list is oldest first, as a plain array.
@@ -138,7 +160,7 @@ You can see a request's history exactly when you can see the request (see "Who s
 ]
 ```
 - `action` is one of `CREATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `AMOUNT_CHANGED`, `PAYMENT_STARTED`, `PAID`, `PAYMENT_FAILED`.
-- `details` depends on the action. `REJECTED` has `reason`, and `AMOUNT_CHANGED` has `old_amount`, `new_amount` and `retiered`.
+- `details` depends on the action. `SUBMITTED` has `amount` and `required_levels`, `REJECTED` has `reason`, and `AMOUNT_CHANGED` has `old_amount`, `new_amount` and `retiered`.
 
 ### GET /api/audit/
 ADMIN only, and read-only. Admins can't see payment requests or payment data (see API.md), so they see who did what and when, but not `details` (amounts, vendors, rejection reasons). Every other role gets `403`. The list is newest first.
@@ -151,6 +173,5 @@ ADMIN only, and read-only. Admins can't see payment requests or payment data (se
 Optional filter: `?action=REJECTED`.
 
 ## Not covered here
-- Submit (`DRAFT` → `PENDING_APPROVAL`): in a separate PR (#17).
 - Editing fields other than the amount.
 - Payment processing (Part C).
