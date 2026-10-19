@@ -357,10 +357,10 @@
   });
   // ---- Role check: employees, managers and Finance may raise requests here. Convenience only; the API enforces the rules. ----
   (async () => {
-    const me = await AUTH.requireRole(["EMPLOYEE", "MANAGER", "FINANCE"], "/login/");
+    const me = await AUTH.requireRole(["EMPLOYEE", "MANAGER", "FINANCE"]);
     if (!me) return;   // wrong role or no session: the browser is already being redirected
     const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-     const roleLabel = { EMPLOYEE: "Employee", MANAGER: "Manager", FINANCE: "Finance Officer" }[me.role];
+    const roleLabel = { EMPLOYEE: "Employee", MANAGER: "Manager", FINANCE: "Finance Officer" }[me.role];
     document.getElementById("who").textContent = `${name} · ${roleLabel}`;
     if (me.role !== "EMPLOYEE") {   // managers and Finance can raise requests too: give them a way back
       const back = document.getElementById("back-link");
