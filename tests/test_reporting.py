@@ -179,3 +179,47 @@ class ReportApiTests(ReportData, APITestCase):
     def test_status_is_case_sensitive(self):
         # Values are the uppercase constants, as in every other response.
         self.assertEqual(self.get_as(self.carol, status='paid').status_code, 400)
+
+
+class ReportDateFilterTests(ReportData, APITestCase):
+    """24,500 on 30 Sep; 67,000 and 148,000 on 1 Oct; 42,000 on 31 Oct."""
+
+    def setUp(self):
+        self.make_data()
+        for amount, day in [('24500', date(2026, 9, 30)), ('67000', date(2026, 10, 1)),
+                            ('148000', date(2026, 10, 1)), ('42000', date(2026, 10, 31))]:
+            PaymentRequest.objects.filter(amount=Decimal(amount)).update(date=day)
+        self.client.force_authenticate(self.carol)
+
+    def overall(self, **params):
+        res = self.client.get(URL, params)
+        self.assertEqual(res.status_code, 200)
+        return res.data['overall']
+
+    def test_range_includes_both_end_days(self):
+        # All of October: 1 Oct and 31 Oct are in, 30 Sep is out.
+        self.assertEqual(self.overall(date_from='2026-10-01', date_to='2026-10-31'),
+                         {'count': 3, 'total': '257000.00'})
+
+    def test_date_from_alone(self):
+        self.assertEqual(self.overall(date_from='2026-10-31'), {'count': 1, 'total': '42000.00'})
+
+    def test_date_to_alone(self):
+        self.assertEqual(self.overall(date_to='2026-09-30'), {'count': 1, 'total': '24500.00'})
+
+    def test_dates_combine_with_status(self):
+        self.assertEqual(self.overall(date_from='2026-10-01', status=PaymentRequest.PENDING_APPROVAL),
+                         {'count': 2, 'total': '215000.00'})
+
+    def test_bad_date_is_rejected(self):
+        res = self.client.get(URL, {'date_from': '2026-13-01'})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('date_from', res.data)
+
+    def test_reversed_range_is_rejected(self):
+        res = self.client.get(URL, {'date_from': '2026-10-31', 'date_to': '2026-10-01'})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.data['date_to'], ['Must be on or after date_from.'])
+
+    def test_same_day_range_is_allowed(self):
+        self.assertEqual(self.overall(date_from='2026-10-01', date_to='2026-10-01')['count'], 2)

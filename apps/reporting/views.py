@@ -27,6 +27,14 @@ class ReportFilters(serializers.Serializer):
     so a typo like ?status=paid can't quietly return totals for everything."""
 
     status = serializers.ChoiceField(choices=PaymentRequest.STATUS_CHOICES, required=False)
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        # A reversed range is almost certainly a mistake; an empty report would hide it.
+        if 'date_from' in attrs and 'date_to' in attrs and attrs['date_from'] > attrs['date_to']:
+            raise serializers.ValidationError({'date_to': 'Must be on or after date_from.'})
+        return attrs
 
 
 class ReportSummary(APIView):

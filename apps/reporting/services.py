@@ -7,6 +7,7 @@ rule as the request list (visible_requests). A report can therefore never
 show a request the user couldn't open.
 """
 
+from datetime import date
 from decimal import Decimal
 
 from django.db.models import Count, QuerySet, Sum
@@ -25,14 +26,24 @@ def _money(value) -> str:
     return str((value or ZERO).quantize(ZERO))
 
 
-def filter_requests(qs: QuerySet[PaymentRequest], status: str | None = None) -> QuerySet[PaymentRequest]:
+def filter_requests(
+    qs: QuerySet[PaymentRequest],
+    status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> QuerySet[PaymentRequest]:
     """Narrow the requests before they are added up. None means "don't filter".
 
     Takes the already-visible queryset, so a filter can only narrow what the
-    user may see, never widen it.
+    user may see, never widen it. The date range is inclusive at both ends and
+    uses the request's own date, so date_to=2026-10-31 includes 31 October.
     """
     if status is not None:
         qs = qs.filter(status=status)
+    if date_from is not None:
+        qs = qs.filter(date__gte=date_from)
+    if date_to is not None:
+        qs = qs.filter(date__lte=date_to)
     return qs
 
 

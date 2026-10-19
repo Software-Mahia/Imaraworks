@@ -143,6 +143,8 @@ Totals over the requests **you can see**, using the same rule as the request lis
 
 Optional filter: `?status=PAID` (any status value above, uppercase) narrows the requests **before** every total, so `by_project` and `by_vendor` show only paid money. The filter applies inside what you can already see, so an employee still gets only their own requests. With a filter, the `pending_approval` and `paid` blocks follow it too (e.g. `pending_approval` is zero under `?status=PAID`). An unknown value gives 400: `{"status": ["\"BOGUS\" is not a valid choice."]}`.
 
+Optional date range: `?date_from=2026-10-01&date_to=2026-10-31` (YYYY-MM-DD, either one alone is fine) keeps requests whose `date` is in the range, **including both end days**, so that example is all of October. It combines with `?status=`. A badly formatted date gives 400 on that field, and `date_from` after `date_to` gives 400: `{"date_to": ["Must be on or after date_from."]}`.
+
 ## Not built yet
 
 Submit, approve and reject; payment processing; audit trail; search filters on the list. Don't call these. Their contracts will be added here by the people who build them.
