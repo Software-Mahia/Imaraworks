@@ -25,6 +25,17 @@ def _money(value) -> str:
     return str((value or ZERO).quantize(ZERO))
 
 
+def filter_requests(qs: QuerySet[PaymentRequest], status: str | None = None) -> QuerySet[PaymentRequest]:
+    """Narrow the requests before they are added up. None means "don't filter".
+
+    Takes the already-visible queryset, so a filter can only narrow what the
+    user may see, never widen it.
+    """
+    if status is not None:
+        qs = qs.filter(status=status)
+    return qs
+
+
 def _totals(qs: QuerySet[PaymentRequest]) -> dict:
     agg = qs.aggregate(count=Count('id'), total=Sum('amount'))
     return {'count': agg['count'], 'total': _money(agg['total'])}

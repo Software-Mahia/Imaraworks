@@ -13,7 +13,9 @@ from rest_framework.test import APITestCase
 
 from apps.accounts.models import Profile
 from apps.payment_requests.models import PaymentRequest, Project
-from apps.reporting.services import summary, totals_by_project, totals_by_status, totals_by_vendor
+from apps.reporting.services import (
+    filter_requests, summary, totals_by_project, totals_by_status, totals_by_vendor,
+)
 from apps.vendors.models import Vendor
 
 URL = '/api/reports/summary/'
@@ -100,14 +102,23 @@ class SummaryServiceTests(ReportData, TestCase):
         self.make_request(self.alice, '0.05', PaymentRequest.DRAFT, self.metro, self.westlands)
         self.assertEqual(summary(self.all)['overall']['total'], '281500.05')
 
+    def test_no_filter_keeps_everything(self):
+        self.assertEqual(filter_requests(self.all).count(), 4)
+
+    def test_status_filter_keeps_only_that_status(self):
+        paid = filter_requests(self.all, status=PaymentRequest.PAID)
+        self.assertEqual(totals_by_vendor(paid), [
+            {'id': self.metro.id, 'name': 'Metro Hardware Ltd.', 'count': 1, 'total': '24500.00'},
+        ])
+
 
 class ReportApiTests(ReportData, APITestCase):
     def setUp(self):
         self.make_data()
 
-    def get_as(self, user):
+    def get_as(self, user, **params):
         self.client.force_authenticate(user)
-        return self.client.get(URL)
+        return self.client.get(URL, params)
 
     def test_requires_login(self):
         self.assertEqual(self.client.get(URL).status_code, 401)
@@ -144,3 +155,27 @@ class ReportApiTests(ReportData, APITestCase):
     def test_post_not_allowed(self):
         self.client.force_authenticate(self.carol)
         self.assertEqual(self.client.post(URL).status_code, 405)
+
+    def test_status_filter_gives_paid_totals_per_project_and_vendor(self):
+        # What the Finance page tables need: money actually paid, not everything requested.
+        res = self.get_as(self.faith, status=PaymentRequest.PAID)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['overall'], {'count': 1, 'total': '24500.00'})
+        self.assertEqual([(p['name'], p['total']) for p in res.data['by_project']],
+                         [('Westlands Project', '24500.00')])
+        self.assertEqual([(v['name'], v['total']) for v in res.data['by_vendor']],
+                         [('Metro Hardware Ltd.', '24500.00')])
+
+    def test_status_filter_cannot_widen_what_an_employee_sees(self):
+        # brian's 148,000 is also PENDING_APPROVAL, but alice must still only see her own.
+        res = self.get_as(self.alice, status=PaymentRequest.PENDING_APPROVAL)
+        self.assertEqual(res.data['overall'], {'count': 1, 'total': '67000.00'})
+
+    def test_unknown_status_is_rejected(self):
+        res = self.get_as(self.carol, status='BOGUS')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('status', res.data)
+
+    def test_status_is_case_sensitive(self):
+        # Values are the uppercase constants, as in every other response.
+        self.assertEqual(self.get_as(self.carol, status='paid').status_code, 400)

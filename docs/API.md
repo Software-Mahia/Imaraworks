@@ -141,6 +141,8 @@ Totals over the requests **you can see**, using the same rule as the request lis
 - Amounts are 2dp **strings**, as everywhere else in this API, so nothing is rounded by a float.
 - `total` adds up `amount` across requests in any status. Use `paid` for money actually paid out.
 
+Optional filter: `?status=PAID` (any status value above, uppercase) narrows the requests **before** every total, so `by_project` and `by_vendor` show only paid money. The filter applies inside what you can already see, so an employee still gets only their own requests. With a filter, the `pending_approval` and `paid` blocks follow it too (e.g. `pending_approval` is zero under `?status=PAID`). An unknown value gives 400: `{"status": ["\"BOGUS\" is not a valid choice."]}`.
+
 ## Not built yet
 
 Submit, approve and reject; payment processing; audit trail; search filters on the list. Don't call these. Their contracts will be added here by the people who build them.
