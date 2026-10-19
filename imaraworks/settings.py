@@ -10,22 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
+import sys
 from pathlib import Path
+
+from imaraworks.env import allowed_hosts_from, debug_from, secret_key_from
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
+# Deployment settings come from environment variables, never from this file
+# (issue #21). See imaraworks/env.py for the rules and README "Setup" for usage.
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bhs-#6wze-z3a57we*w$t5+j*#g-1hs0e@w+lhj6o78(ft!2b8'
+TESTING = 'test' in sys.argv
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = debug_from(os.environ)
 
-ALLOWED_HOSTS = []
+SECRET_KEY = secret_key_from(os.environ, debug=DEBUG, testing=TESTING)
+
+ALLOWED_HOSTS = allowed_hosts_from(os.environ)
 
 
 # Application definition
@@ -57,6 +62,9 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves static files with DEBUG off (Django itself only does so with DEBUG
+    # on). Must come straight after SecurityMiddleware, before anything else.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -132,11 +140,14 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Where `manage.py collectstatic` gathers every app's static files on the
+# server, for WhiteNoise to serve. Generated, so it is not committed.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-import sys
-if 'test' in sys.argv:
+if TESTING:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
