@@ -165,6 +165,9 @@ def approval_queue(user):
         PaymentRequest.objects
         .filter(status=STATUS_PENDING)
         .exclude(requester=user)
+        # Same loading as visible_requests(): the serializer shows each item's
+        # vendor, project and requester names and its approval block.
+        .select_related("vendor", "project", "requester")
         .prefetch_related("approvals")
         .order_by("created_at")
     )
