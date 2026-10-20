@@ -64,10 +64,6 @@
 
 <script src="{% static 'frontend/auth.js' %}"></script>
 <script>
-  // Where each role lands after signing in (roles come from /api/auth/me/, always uppercase).
-  // ADMIN is left out on purpose: there is no administrator page yet, and /admin/ is Django's own
-  // admin, which uses a separate session login that these tokens do not open. Add it once decided.
-  const HOME_BY_ROLE = { EMPLOYEE: "/employee/", MANAGER: "/manager/", FINANCE: "/finance/" };
 
   const form = document.getElementById("login-form");
   const errorBox = document.getElementById("error");
@@ -85,7 +81,7 @@
 
   // Sends the user to their own page. Returns false if their role has no page yet.
   function goHome(user) {
-    const home = HOME_BY_ROLE[user.role];
+    const home = AUTH.homeFor(user.role);
     if (!home) return false;
     window.location.href = home;
     return true;
@@ -106,6 +102,7 @@
       }
       // On success the browser is already moving to the next page, so the button stays disabled.
     } catch (err) {
+      console.error(err);
       // fetch() throws a TypeError when the server cannot be reached at all.
       showError(err instanceof TypeError
         ? "Could not reach the server. Check your connection and try again."
