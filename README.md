@@ -8,13 +8,18 @@ KamiLimu ICT Track case study.
 ```
 python -m venv venv
 venv\Scripts\Activate.ps1        # Windows PowerShell
-pip install -r requirements.txt
-$env:DJANGO_DEBUG="1"            # once per terminal; see "Settings" below
+pip install -r requirements.txt  # re-run after every pull that changes requirements.txt
+
+# Local development only (set in every new terminal):
+export DJANGO_DEBUG=1            # Git Bash. PowerShell: $env:DJANGO_DEBUG = "1"
+
 python manage.py migrate
 python manage.py seed_users
 python manage.py runserver
 ```
 
+If you see `DJANGO_SECRET_KEY is not set`, you forgot `DJANGO_DEBUG=1`.
+If you see `No module named 'whitenoise'` (or any other module), re-run `pip install -r requirements.txt`.
 ### Settings
 
 Deployment settings come from environment variables, never from the code
