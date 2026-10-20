@@ -50,9 +50,13 @@ STATUS_REJECTED = PaymentRequest.REJECTED
 AUDIT_APPROVED = AuditLog.APPROVED
 AUDIT_REJECTED = AuditLog.REJECTED
 AUDIT_AMOUNT_CHANGED = AuditLog.AMOUNT_CHANGED
+AUDIT_SUBMITTED = AuditLog.SUBMITTED
 
 MSG_REASON_REQUIRED = "A reason is required to reject a request."
 MSG_AMOUNT_LOCKED = "The amount can no longer be changed for this request."
+MSG_NOT_REQUESTER = "Only the person who created this request can submit it."
+MSG_ALREADY_SUBMITTED = "This request has already been submitted."
+MSG_NOT_REQUESTER_EDIT = "Only the person who created this request can change its amount."
 
 
 class ApprovalDenied(Exception):
@@ -313,6 +317,96 @@ def reject(payment_request, user, reason):
     return decision
 
 
+class SubmitDenied(Exception):
+    """Raised when a request may not be submitted. ``reason`` is a MSG_* sentence."""
+
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class SubmitDecision:
+    """Everything the save step needs to write when a request is submitted."""
+
+    new_status: str
+    audit_action: str
+    audit_details: dict
+
+
+# SUBMITTED is accepted as well as DRAFT, although nothing moves a request into
+# SUBMITTED any more (submit goes straight to PENDING). A request that somehow
+# sits in SUBMITTED can still be sent on instead of being stuck there.
+_SUBMITTABLE_STATUSES = {STATUS_DRAFT, STATUS_SUBMITTED}
+
+
+def decide_submission(*, is_requester, status, amount):
+    """Work out the result of submitting a request, or raise SubmitDenied.
+
+    Inputs are plain data the wrapper reads off the request and user:
+      - is_requester: True if the user submitting created the request
+      - status:       the request's current status
+      - amount:       the request's current amount
+
+    Submit goes straight from DRAFT to PENDING_APPROVAL (agreed on PR #5).
+    A separate SUBMITTED step would just be a second click with no rule behind
+    it. The audit entry still says SUBMITTED, so the history shows who sent it
+    for approval and when.
+
+    Only the requester may submit: sending a request for approval is the
+    requester confirming "this is ready", which nobody can do on their behalf.
+    """
+    if not is_requester:
+        raise SubmitDenied(MSG_NOT_REQUESTER)
+    if status not in _SUBMITTABLE_STATUSES:
+        raise SubmitDenied(MSG_ALREADY_SUBMITTED)
+
+    amount = Decimal(str(amount))
+    return SubmitDecision(
+        new_status=STATUS_PENDING,
+        audit_action=AUDIT_SUBMITTED,
+        audit_details={
+            "amount": str(amount),
+            # Recorded so the history shows which tier the request entered at.
+            "required_levels": sorted(required_levels(amount)),
+        },
+    )
+
+
+def submit(payment_request, user):
+    """Send ``payment_request`` for approval. Returns the SubmitDecision.
+
+    Raises SubmitDenied (nothing written) if the rules say no.
+
+    Same shape as approve(): lock, decide, write, all in one transaction. The
+    lock matters for a double-click: two submits arriving together run one
+    after the other, so the second sees PENDING_APPROVAL and is refused instead
+    of writing a second SUBMITTED audit entry.
+
+    Role is not checked: anyone who can create a request can submit their own
+    (managers and finance raise requests too). Role only gates approval.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_submission(
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            amount=locked.amount,
+        )
+
+        locked.status = decision.new_status
+        locked.save(update_fields=["status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision
+
+
 class AmountChangeDenied(Exception):
     """Raised when a request's amount may not be changed in its current status."""
 
@@ -344,7 +438,7 @@ _EDITABLE_STATUSES = {STATUS_DRAFT, STATUS_SUBMITTED, STATUS_PENDING, STATUS_APP
 _PRE_APPROVAL_STATUSES = {STATUS_DRAFT, STATUS_SUBMITTED}
 
 
-def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
+def decide_amount_change(*, is_requester, status, old_amount, new_amount, approved_levels):
     """Work out the result of changing a request's amount, or raise AmountChangeDenied.
 
     Returns None if the amount didn't actually change (nothing to do).
@@ -357,7 +451,15 @@ def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
     Re-tiering needs no special code: approval always reads required_levels()
     on the CURRENT amount, so a request that now crosses 50k automatically needs
     finance too. ``retiered`` is only reported here so the audit log shows it.
+
+    Only the requester may change the amount: it is their request, and an
+    approver editing it would be approving a number nobody asked for. This is
+    checked first, so someone else's request never reveals whether its amount
+    is still editable.
     """
+    if not is_requester:
+        raise AmountChangeDenied(MSG_NOT_REQUESTER_EDIT)
+
     old_amount = Decimal(str(old_amount))
     new_amount = Decimal(str(new_amount))
     if new_amount == old_amount:
@@ -389,3 +491,48 @@ def decide_amount_change(*, status, old_amount, new_amount, approved_levels):
             "retiered": retiered,
         },
     )
+
+
+def change_amount(payment_request, user, new_amount):
+    """Save a new amount on ``payment_request``. Returns the AmountChangeDecision,
+    or None if the amount is the same.
+
+    Raises AmountChangeDenied (nothing written) if the status locks the amount.
+
+    Same shape as approve(): lock, decide, write. The approvals that counted
+    are marked superseded rather than deleted, so the audit trail still shows
+    who approved the old amount.
+
+    Raises AmountChangeDenied too if ``user`` didn't create the request. That
+    rule lives in decide_amount_change(), so it is checked under the lock with
+    the others.
+    """
+    with transaction.atomic():
+        locked = PaymentRequest.objects.select_for_update().get(pk=payment_request.pk)
+
+        decision = decide_amount_change(
+            is_requester=(locked.requester_id == user.id),
+            status=locked.status,
+            old_amount=locked.amount,
+            new_amount=new_amount,
+            approved_levels=_counting_levels(locked),
+        )
+        if decision is None:
+            return None
+
+        locked.approvals.filter(
+            decision=Approval.APPROVED,
+            superseded=False,
+            level__in=decision.supersede_levels,
+        ).update(superseded=True)
+        locked.amount = Decimal(str(new_amount))
+        locked.status = decision.new_status
+        locked.save(update_fields=["amount", "status", "updated_at"])
+        AuditLog.objects.create(
+            request=locked,
+            actor=user,
+            action=decision.audit_action,
+            details=decision.audit_details,
+        )
+
+    return decision

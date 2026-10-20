@@ -22,7 +22,12 @@ class CanCreatePaymentRequest(BasePermission):
         return get_role(request.user) in CAN_CREATE
 
 def visible_requests(user: User) -> QuerySet[PaymentRequest]:
-    qs = PaymentRequest.objects.select_related('vendor', 'project', 'requester').order_by('-created_at')
+    qs = (
+        PaymentRequest.objects
+        .select_related('vendor', 'project', 'requester')
+        .prefetch_related('approvals')  # for the serializer's approval block
+        .order_by('-created_at')
+    )
     role = get_role(user)
     if role in CAN_SEE_ALL:
         return qs

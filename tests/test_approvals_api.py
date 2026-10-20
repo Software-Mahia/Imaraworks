@@ -8,11 +8,14 @@ import datetime
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Profile
 from apps.approvals import logic
 from apps.approvals.logic import LEVEL_FINANCE as F, LEVEL_MANAGER as M
+from apps.approvals.models import Approval
 from apps.approvals.services import MSG_REASON_REQUIRED
 from apps.payment_requests.models import PaymentRequest, Project
 from apps.vendors.models import Vendor
@@ -185,3 +188,56 @@ class RejectApiTests(ApprovalsApiTestCase):
         self.as_user(self.carol)
         resp = self.client.post(self.reject_url(req), {'reason': 'Again'}, format='json')
         self.assertEqual(resp.status_code, 409)
+
+
+class ApprovalBlockOnRequestsTests(ApprovalsApiTestCase):
+    """GET /api/payment-requests/ and /<id>/ carry the same approval block as the queue."""
+
+    list_url = '/api/payment-requests/'
+
+    def approve_as_manager(self, req):
+        Approval.objects.create(request=req, approver=self.carol,
+                                decision=Approval.APPROVED, level=M)
+
+    def test_detail_shows_outstanding_finance_after_manager_approves(self):
+        # 67,000 > 50k: the manager has approved, finance is still to do.
+        req = self.make_request('67000')
+        self.approve_as_manager(req)
+        self.as_user(self.alice)
+        resp = self.client.get(f'{self.list_url}{req.pk}/')
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['approval'], {
+            'required_levels': [F, M], 'approved_levels': [M], 'outstanding_levels': [F],
+        })
+
+    def test_list_shows_approval_block_for_each_request(self):
+        small = self.make_request('24500')
+        self.approve_as_manager(small)
+        large = self.make_request('148000')
+        self.as_user(self.carol)
+        resp = self.client.get(self.list_url)
+
+        self.assertEqual(resp.status_code, 200)
+        blocks = {item['id']: item['approval'] for item in resp.data}
+        self.assertEqual(blocks[small.pk], {
+            'required_levels': [M], 'approved_levels': [M], 'outstanding_levels': [],
+        })
+        self.assertEqual(blocks[large.pk], {
+            'required_levels': [F, M], 'approved_levels': [], 'outstanding_levels': [F, M],
+        })
+
+    def test_list_query_count_does_not_grow_with_requests(self):
+        # Guards against N+1: approvals must be prefetched, not fetched per request.
+        self.as_user(self.carol)
+
+        def count_queries():
+            with CaptureQueriesContext(connection) as ctx:
+                self.client.get(self.list_url)
+            return len(ctx)
+
+        self.approve_as_manager(self.make_request('24500'))
+        with_one = count_queries()
+        for amount in ('67000', '148000', '42000'):
+            self.approve_as_manager(self.make_request(amount))
+        self.assertEqual(count_queries(), with_one)
