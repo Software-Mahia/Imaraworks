@@ -11,6 +11,7 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source='project.name', read_only=True)
     requester_username = serializers.CharField(source='requester.username', read_only=True)
     requester_name = serializers.SerializerMethodField()
+    approval = serializers.SerializerMethodField()
 
     class Meta:
         model = PaymentRequest
@@ -19,6 +20,12 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
 
     def get_requester_name(self, obj: PaymentRequest) -> str:
         return obj.requester.get_full_name() or obj.requester.username
+
+    def get_approval(self, obj: PaymentRequest) -> dict:
+        # Imported here, not at the top: apps.approvals already imports this
+        # module, so a top-level import would be circular.
+        from apps.approvals.services import approval_summary
+        return approval_summary(obj)
 
     def validate_amount(self, value: Decimal) -> Decimal:
         if value <= 0:

@@ -17,7 +17,7 @@ Levels are lowercase: `manager`, `finance`. A MANAGER user approves as `manager`
 
 ## The `approval` block
 
-The queue, the submit and amount-change responses, and the approve/reject responses include this block, so pages can show "Waiting on Finance" and similar:
+The queue, the submit and amount-change responses, the approve/reject responses, and `GET /api/payment-requests/` (list and detail) include this block, so pages can show "Waiting on Finance" and similar:
 
 ```json
 "approval": {
