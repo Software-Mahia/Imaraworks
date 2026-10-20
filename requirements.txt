@@ -5,3 +5,4 @@ djangorestframework_simplejwt==5.5.1
 PyJWT==2.15.1
 sqlparse==0.6.0
 tzdata==2026.5
+whitenoise==6.12.0
