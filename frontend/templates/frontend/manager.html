@@ -232,7 +232,7 @@
 
       const requestCell = document.createElement("td");
       requestCell.append(document.createTextNode(r.vendor_name), sub(r.reason),
-                         sub(`Invoice ${r.invoice_number}, ${r.project_name} project`));
+                         sub(`Invoice ${r.invoice_number}, ${r.project_name}`));
 
       const requesterCell = document.createElement("td");
       requesterCell.textContent = r.requester_name || r.requester_username;
