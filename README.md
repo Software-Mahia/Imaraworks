@@ -41,7 +41,7 @@ accounts get a password that is not in this repo (issue #21).
 |---|---|
 | alice, brian | Employee |
 | carol, david | Manager |
-| faith | Finance Officer |
+| faith, fiona | Finance Officer |
 | grace | Administrator |
 
 ## Project structure
