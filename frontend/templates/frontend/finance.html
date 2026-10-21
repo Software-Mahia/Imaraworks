@@ -180,6 +180,8 @@
   let failReasons = {};      // request id -> reason from its latest failed payment attempt
   const pendingKeys = new Map();   // request id -> idempotency key of a payment whose outcome we have not seen yet
 
+    // The pay route is expected to move to /api/payment-requests/<id>/pay/ (decision on #33). Change it here only.
+  const PAY_URL = id => `/api/payments/payment-requests/${id}/pay/`;
   const banner = document.getElementById("banner");
   const filtersForm = document.getElementById("filters");
   const reportForm = document.getElementById("report-filters");
@@ -275,6 +277,10 @@
       } else {
         next = el("td", {}, "Payment failed", sub(failReasons[r.id] || "Unknown reason"));
         actions = makeButton("Retry payment", "btn-primary", (e) => pay(r, e.currentTarget));
+      }
+      // Decision on #33: Finance cannot pay a request they raised themselves (the API answers 403), so don't offer the button.
+      if (kind !== "approve" && r.requester === ME.id) {
+        actions = el("span", { className: "own-note", textContent: "You raised this request, so another Finance officer has to pay it." });
       }
       return el("tr", {},
         el("td", {}, r.vendor_name, sub(`Invoice ${r.invoice_number}, ${r.project_name} project, ${METHOD[r.payment_method] || r.payment_method}`)),
@@ -384,6 +390,7 @@
     try {
       await Promise.all([loadRequests(), loadApprovalQueue(), loadFailReasons(), loadCards(), loadPaidTables()]);
     } catch (err) {
+      console.error(err);
       showBanner("Could not reach the server. Check your connection and reload.", true);
     }
     renderQueue();
@@ -451,7 +458,7 @@
 
     let res;
     try {
-      res = await AUTH.apiFetch(`/api/payments/payment-requests/${r.id}/pay/`, { method: "POST", body: JSON.stringify(payload) });
+      res = await AUTH.apiFetch(PAY_URL(r.id), { method: "POST", body: JSON.stringify(payload) });
     } catch (err) {
       showBanner("Could not confirm whether the payment went through. Press the button again: the same attempt is reused, so it cannot be charged twice.", true);
       payButton.disabled = false;
