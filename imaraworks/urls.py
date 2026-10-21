@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from apps.payment_requests.views import ProjectList
+from .health import health, ready
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,4 +33,6 @@ urlpatterns = [
     path('api/projects/', ProjectList.as_view()),
     path('api-auth/', include('rest_framework.urls')),
     path('', include('frontend.urls')),
+    path('health/', health),
+    path('ready/', ready),
 ]
