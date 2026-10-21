@@ -141,13 +141,19 @@ def approval_summary(payment_request):
     """The API's ``approval`` block: which levels are needed, done and still to do.
 
     Lists are sorted so the JSON is the same every time.
+
+    Levels are only outstanding while the request is PENDING_APPROVAL. A draft
+    isn't waiting on anyone yet, and a rejected or paid request never will be,
+    so pages showing "Waiting on Manager" from this list stay correct.
+    ``required_levels`` is still shown for every status.
     """
     required = required_levels(payment_request.amount)
     approved = _counting_levels(payment_request) & required
+    outstanding = required - approved if payment_request.status == STATUS_PENDING else set()
     return {
         "required_levels": sorted(required),
         "approved_levels": sorted(approved),
-        "outstanding_levels": sorted(required - approved),
+        "outstanding_levels": sorted(outstanding),
     }
 
 

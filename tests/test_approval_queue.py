@@ -63,6 +63,15 @@ class ApprovalQueueTests(TestCase):
                                 level=M, superseded=True)
         self.assertEqual(approval_summary(req)['outstanding_levels'], [M])
 
+    def test_summary_has_nothing_outstanding_unless_pending(self):
+        # A draft isn't waiting on anyone yet; rejected or paid never will be.
+        for status in [PaymentRequest.DRAFT, PaymentRequest.REJECTED, PaymentRequest.PAID]:
+            with self.subTest(status=status):
+                req = self.make_request('148000', status=status)
+                self.assertEqual(approval_summary(req), {
+                    'required_levels': [F, M], 'approved_levels': [], 'outstanding_levels': [],
+                })
+
     # --- approval_queue ---
     def test_manager_sees_pending_requests_oldest_first(self):
         first = self.make_request('24500')
