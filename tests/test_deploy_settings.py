@@ -7,6 +7,7 @@ reload Django's settings or touch the real environment.
 
 import importlib
 import os
+import re
 import sys
 from unittest import mock
 
@@ -162,6 +163,19 @@ class SettingsModuleTests(SimpleTestCase):
         self.assertTrue(prod.CSRF_COOKIE_SECURE)
         self.assertEqual(prod.SECURE_HSTS_SECONDS, 3600)
         self.assertTrue(prod.SECURE_HSTS_INCLUDE_SUBDOMAINS)
+
+    def test_prod_lets_health_checks_through_on_plain_http(self):
+        # The host calls these over HTTP; everything else must still redirect.
+        prod = load_settings('imaraworks.settings.prod', PROD_ENV)
+
+        def exempt(path):
+            return any(re.search(pattern, path) for pattern in prod.SECURE_REDIRECT_EXEMPT)
+
+        self.assertTrue(exempt('health/'))
+        self.assertTrue(exempt('ready/'))
+        self.assertFalse(exempt('health/extra'))
+        self.assertFalse(exempt('api/payment-requests/'))
+        self.assertFalse(exempt(''))
 
     def test_dev_stays_on_plain_http(self):
         # runserver has no HTTPS, so dev must not redirect to it.

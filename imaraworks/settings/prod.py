@@ -37,6 +37,11 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Send any http:// request to https://.
 SECURE_SSL_REDIRECT = True
 
+# Except the health checks (#27): the host calls them over plain HTTP from
+# inside its network, and a redirect instead of a 200 would mark the app
+# unhealthy. Django matches these against the path without its leading slash.
+SECURE_REDIRECT_EXEMPT = [r'^health/$', r'^ready/$']
+
 # Only send the session and CSRF cookies over HTTPS, so they can't be read
 # off an unencrypted connection.
 SESSION_COOKIE_SECURE = True
