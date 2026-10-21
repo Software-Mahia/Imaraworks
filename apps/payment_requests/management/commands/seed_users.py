@@ -22,7 +22,7 @@ def seed_password(environ, *, debug):
         return DEV_PASSWORD
     raise CommandError(
         'SEED_USER_PASSWORD is not set. The deployed demo must not use the dev '
-        'password; set SEED_USER_PASSWORD, or set DJANGO_DEBUG=1 for local development.'
+        'password; set SEED_USER_PASSWORD. (Locally, the dev settings use the dev password.)'
     )
 
 
