@@ -283,7 +283,7 @@
         actions = el("span", { className: "own-note", textContent: "You raised this request, so another Finance officer has to pay it." });
       }
       return el("tr", {},
-        el("td", {}, r.vendor_name, sub(`Invoice ${r.invoice_number}, ${r.project_name} project, ${METHOD[r.payment_method] || r.payment_method}`)),
+        el("td", {}, r.vendor_name, sub(`Invoice ${r.invoice_number}, ${r.project_name}, ${METHOD[r.payment_method] || r.payment_method}`)),
         el("td", { textContent: who(r) }),
         el("td", { className: "nowrap", textContent: money(r.amount) }),
         waitCell, next, el("td", {}, actions));
