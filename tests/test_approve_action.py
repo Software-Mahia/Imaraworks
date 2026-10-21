@@ -7,6 +7,7 @@ when allowed, and NOTHING is written when refused.
 
 import datetime
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -164,3 +165,17 @@ class ApproveActionTests(TestCase):
         approve(req, self.carol)
         req.refresh_from_db()
         self.assertEqual(req.status, PaymentRequest.APPROVED)
+
+    # --- Two approvers at once: the database backstop ---
+    def test_constraint_clash_is_already_approved_and_nothing_written(self):
+        # Simulates two managers approving at the same moment without the row
+        # lock: david's check reads "no manager approval yet", but carol's row
+        # is already saved, so the database constraint refuses david's.
+        req = self.make_request('67000')
+        approve(req, self.carol)
+        with mock.patch('apps.approvals.services._counting_levels', return_value=set()):
+            with self.assertRaises(ApprovalDenied) as ctx:
+                approve(req, self.david)
+        self.assertEqual(ctx.exception.reason, logic.MSG_ALREADY_APPROVED)
+        self.assertEqual(req.approvals.count(), 1)
+        self.assertEqual(req.audit_logs.count(), 1)

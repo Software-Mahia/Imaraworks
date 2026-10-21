@@ -24,10 +24,11 @@ so the wrapper holds no business rules -- it only reads and writes.
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.accounts.permissions import get_role
 from apps.approvals.logic import (
+    MSG_ALREADY_APPROVED,
     approver_level,
     evaluate_approval,
     is_fully_approved,
@@ -205,12 +206,20 @@ def approve(payment_request, user):
             approved_levels=_counting_levels(locked),
         )
 
-        Approval.objects.create(
-            request=locked,
-            approver=user,
-            decision=Approval.APPROVED,
-            level=decision.level,
-        )
+        # The constraint only fires if the lock didn't serialise the two
+        # approvers (SQLite ignores select_for_update). The other approver got
+        # there first, so this is the same answer decide_approval would have
+        # given: a 409, not a 500. Raising leaves the atomic block, which rolls
+        # back, so nothing is written.
+        try:
+            Approval.objects.create(
+                request=locked,
+                approver=user,
+                decision=Approval.APPROVED,
+                level=decision.level,
+            )
+        except IntegrityError:
+            raise ApprovalDenied(MSG_ALREADY_APPROVED)
         if locked.status != decision.new_status:
             locked.status = decision.new_status
             locked.save(update_fields=["status", "updated_at"])
