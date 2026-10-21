@@ -106,6 +106,41 @@ Sorted by name.
 | FINANCE | All requests | Yes |
 | ADMIN | None (deliberate: admins manage users, not payments) | No (403) |
 
+## Payments
+
+### POST /api/payment-requests/<id>/pay/
+
+FINANCE only. Pays an `APPROVED` request, or retries a `FAILED` one, through the mock provider. The amount charged is always the request's approved amount.
+
+Body (all optional):
+```json
+{"idempotency_key": "a uuid", "currency": "KES", "gateway": "mock", "description": "..."}
+```
+- Send the same `idempotency_key` when retrying after a network error: you get the first attempt back (`"replayed": true`), not a second charge. One is generated if you leave it out.
+- A `description` containing "FAIL" makes the mock provider decline (for demos).
+
+Response (201 new attempt, 200 replay):
+```json
+{
+  "id": 7, "request": 1, "status": "SUCCESS", "amount": "24500.00", "currency": "KES",
+  "provider_reference": "MOCK-...", "provider_reason": "", "replayed": false,
+  "created_at": "2026-10-20T08:00:00Z", "completed_at": "2026-10-20T08:00:01Z"
+}
+```
+`status` is `SUCCESS` (request becomes `PAID`) or `FAILED` (request becomes `FAILED` and can be retried).
+
+| Status | When |
+|---|---|
+| 403 | Not FINANCE, or the request is your own (`"You cannot pay a request you created."`) |
+| 404 | No such request |
+| 409 | Not payable (not `APPROVED`/`FAILED`), already paid, or a payment is in progress |
+| 422 | `amount` was sent (it is never accepted), or unknown `gateway` |
+| 502 | The provider errored; the attempt is recorded `FAILED` |
+
+### GET /api/payments/transactions/
+
+FINANCE only. Every payment attempt, newest first (plain array).
+
 ## Errors
 
 | Status | Body | When |

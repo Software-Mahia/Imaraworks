@@ -10,7 +10,12 @@ from rest_framework.response import Response
 from apps.accounts.models import Profile
 from apps.payment_requests.models import PaymentRequest
 from apps.payments.models import PaymentTransaction
-from apps.payments.services import PaymentDenied, PaymentGatewayError, initiate_payment
+from apps.payments.services import (
+    PaymentDenied,
+    PaymentGatewayError,
+    SelfPaymentDenied,
+    initiate_payment,
+)
 
 
 def _get_role(user):
@@ -47,7 +52,7 @@ def pay_payment_request(request: Request, pk: int) -> Response:
     Returns:
     - 200: Payment initiated (or replayed)
     - 201: Payment attempt recorded (SUCCESS or FAILED)
-    - 403: Not Finance role
+    - 403: Not Finance role, or the request is your own
     - 404: Request not found or not visible
     - 409: Request not payable / already paid / a payment is already in flight
     - 422: Unknown gateway, or an "amount" was supplied
@@ -84,6 +89,9 @@ def pay_payment_request(request: Request, pk: int) -> Response:
             currency=currency,
             description=description,
         )
+    except SelfPaymentDenied as e:
+        # Before PaymentDenied: it is a subclass, but a "who" refusal, not a state one.
+        return Response({"detail": e.reason}, status=status.HTTP_403_FORBIDDEN)
     except PaymentDenied as e:
         return Response({"detail": e.reason}, status=status.HTTP_409_CONFLICT)
     except PaymentGatewayError as e:
