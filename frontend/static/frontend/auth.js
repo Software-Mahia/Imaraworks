@@ -11,11 +11,11 @@ const AUTH = (() => {
   function homeFor(role) {
     return Object.hasOwn(HOME_BY_ROLE, role) ? HOME_BY_ROLE[role] : null;
   }
-  // NOTE on localStorage: simplest option for a project this size, but tokens stored here are
-  // readable by any JS that runs on the page. That is why every page must escape data before
-  // putting it into innerHTML (see esc() in manager.html and finance.html): one XSS hole
+   // NOTE on localStorage: simplest option for a project this size, but tokens stored here are
+  // readable by any JS that runs on the page. That is why the role pages never put server data
+  // into innerHTML (they build rows with createElement and textContent): one XSS hole
   // becomes token theft. The safer alternative, an httpOnly cookie set by the server, is more
-  // setup than this timeline allows. List it under "known limitations" in the documentation.
+  // setup than this timeline allows. List it under "known limitations" in the documentation..
 
   function getAccess() { return localStorage.getItem(ACCESS_KEY); }
   function getRefresh() { return localStorage.getItem(REFRESH_KEY); }

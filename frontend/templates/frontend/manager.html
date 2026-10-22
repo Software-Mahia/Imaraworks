@@ -82,7 +82,7 @@
     margin-bottom: 16px;
   }
 
-    #banner.error { background: #F7E7E2; color: var(--danger); }
+  #banner.error { background: #F7E7E2; color: var(--danger); }
 
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
@@ -99,7 +99,6 @@
   .sub { display: block; font-size: 12px; color: var(--text-soft); margin-top: 3px; }
   .late { color: var(--late-text); font-weight: 600; }
   .actions { display: flex; gap: 8px; }
-  .own-note { font-size: 12px; color: var(--text-soft); max-width: 190px; }
 
   #empty-state { color: var(--text-soft); font-size: 14px; padding: 24px 0; text-align: center; }
 
@@ -272,19 +271,25 @@
   async function approve(r, actions) {
     const buttons = actions.querySelectorAll("button");
     buttons.forEach(b => { b.disabled = true; });   // a second click would only earn a 409
-    const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
-    const body = await readJson(res);
-    if (res.ok) {
-      const left = (body.approval && body.approval.outstanding_levels) || [];
-      showBanner(left.length
-        ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
-        : `Approved ${r.vendor_name}. It is ready for Finance to pay.`, false);
-      await loadQueue();
-      return;
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
+      const body = await readJson(res);
+      if (res.ok) {
+        const left = (body.approval && body.approval.outstanding_levels) || [];
+        showBanner(left.length
+          ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
+          : `Approved ${r.vendor_name}. It is ready for Finance to pay.`, false);
+        await loadQueue();
+        return;
+      }
+      showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      if (res.status === 404 || res.status === 409) await loadQueue();   // the request changed under us: reload
+      else buttons.forEach(b => { b.disabled = false; });
+    } catch (err) {
+      console.error(err);
+      showBanner("Could not reach the server. Please try again.", true);
+      buttons.forEach(b => { b.disabled = false; });
     }
-    showBanner(errorText(body), true);
-    if (res.status === 404 || res.status === 409) await loadQueue();   // the request changed under us: reload
-    else buttons.forEach(b => { b.disabled = false; });
   }
 
   // ---- Reject (a reason is required) ----
@@ -308,16 +313,23 @@
     const target = rejecting;
     const submit = e.target.querySelector("button[type=submit]");
     submit.disabled = true;
-    const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    });
-    const body = await readJson(res);
-    submit.disabled = false;
-    dialog.close();
-    if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
-    else showBanner(errorText(body), true);
-    await loadQueue();
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      const body = await readJson(res);
+      dialog.close();
+      if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
+      else showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      await loadQueue();
+    } catch (err) {
+      console.error(err);
+      dialog.close();
+      showBanner("Could not reach the server. Please try again.", true);
+    } finally {
+      submit.disabled = false;   // the same button is reused every time the dialog opens
+    }
   });
   // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
     (async () => {
