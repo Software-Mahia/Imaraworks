@@ -218,7 +218,7 @@
           <select name="vendor" required><option value="">Loading...</option></select>
         </label>
         <label>Amount (KES)
-          <input name="amount" type="number" min="1" step="0.01" required>
+          <input name="amount" type="number" min="0.01" step="0.01" required>
         </label>
       </div>
       <div class="field-row">
@@ -269,7 +269,7 @@
 
 <script src="{% static 'frontend/auth.js' %}"></script>
 <script>
-    // ---- State: the signed-in user and their requests, loaded from the API after the role check ----
+  // ---- State: the signed-in user and their requests, loaded from the API after the role check ----
   let ME = null;
   let requests = [];
 
@@ -297,7 +297,9 @@
 
   // "Waiting on a manager and Finance", from the approval block when the API sends one.
   function waitingOn(r) {
-     const levels = ((r.approval && r.approval.outstanding_levels) || []).slice().sort((a, b) => (a === "manager" ? -1 : 1));
+    if (r.status !== "PENDING_APPROVAL") return "";   // the approval block is sent for every status; only a pending request is waiting on anyone
+    const order = l => (l === "manager" ? 0 : 1);
+    const levels = ((r.approval && r.approval.outstanding_levels) || []).slice().sort((a, b) => order(a) - order(b));
     return levels.length ? "Waiting on " + levels.map(l => LEVEL_NAME[l] || l).join(" and ") : "";
   }
 
@@ -394,17 +396,23 @@
 
   async function submitDraft(id, button) {
     button.disabled = true;
-    const res = await AUTH.apiFetch(`/api/payment-requests/${id}/submit/`, { method: "POST" });
-    const body = await readJson(res);
-    if (res.ok) {
-      requests = requests.map(r => (r.id === id ? body : r));
-      showMessage("Request submitted for approval.", false);
-      renderRequests();
-    } else if (res.status === 409) {
-      showMessage("This request was already submitted. Reloading your list.", true);
-      await loadRequests();
-    } else {
-      showMessage(describeErrors(body).join(" "), true);
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${id}/submit/`, { method: "POST" });
+      const body = await readJson(res);
+      if (res.ok) {
+        requests = requests.map(r => (r.id === id ? body : r));
+        showMessage("Request submitted for approval.", false);
+        renderRequests();
+      } else if (res.status === 409) {
+        showMessage("This request was already submitted. Reloading your list.", true);
+        await loadRequests();
+      } else {
+        showMessage(describeErrors(body).join(" "), true);
+        button.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      showMessage("Could not reach the server. Please try again.", true);
       button.disabled = false;
     }
   }
