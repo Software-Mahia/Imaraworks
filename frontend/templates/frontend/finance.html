@@ -95,7 +95,8 @@
   </section>
 
   <h2>Needs your action</h2>
-  <div id="demo-box" class="hint" hidden><label><input type="checkbox" id="simulate-decline"> Demo only: make the mock provider decline the next payment</label></div>  <p class="hint">Oldest first. Second approvals for requests above KES 50,000, payments ready to send, and failed payments to retry.</p>
+  <div id="demo-box" class="hint" hidden><label><input type="checkbox" id="simulate-decline"> Demo only: make the mock provider decline the next payment</label></div>
+  <p class="hint">Oldest first. Second approvals for requests above KES 50,000, payments ready to send, and failed payments to retry.</p>
   <section class="panel">
     <table>
       <thead><tr><th>Request</th><th>Requested by</th><th>Amount (KES)</th><th>Waiting</th><th>Next step</th><th></th></tr></thead>
@@ -137,8 +138,7 @@
     <p class="empty" id="results-empty" hidden>No requests match these filters.</p>
   </section>
    <h2>Paid totals</h2>
-  <p class="hint">What has actually been paid, by project and by vendor. Leave the dates empty for everything.</p>
-  <section class="panel">
+  <p class="hint">Paid requests, by the date on the request. Leave the dates empty for everything.</p>  <section class="panel">
     <form class="filters" id="report-filters">
       <label>From <input type="date" name="date_from"></label>
       <label>To <input type="date" name="date_to"></label>
@@ -163,7 +163,7 @@
   <form id="reject-form">
     <h3>Reject this request</h3>
     <p id="reject-target"></p>
-    <textarea id="reject-reason" placeholder="Why is this being rejected? This is recorded in the requests history." required></textarea>
+    <textarea id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
     <div class="dialog-actions">
       <button type="button" class="btn-secondary" id="reject-cancel">Cancel</button>
       <button type="submit" class="btn-reject">Reject request</button>
@@ -400,17 +400,22 @@
   // ---- Approve (second approvals) ----
   async function approve(r, actions) {
     actions.querySelectorAll("button").forEach(b => { b.disabled = true; });
-    const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
-    const body = await readJson(res);
-    if (res.ok) {
-      const left = (body.approval && body.approval.outstanding_levels) || [];
-      showBanner(left.length
-        ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
-        : `Approved ${r.vendor_name}. It is ready to pay.`, false);
-    } else {
-      showBanner(errorText(body), true);
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
+      const body = await readJson(res);
+      if (res.ok) {
+        const left = (body.approval && body.approval.outstanding_levels) || [];
+        showBanner(left.length
+          ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
+          : `Approved ${r.vendor_name}. It is ready to pay.`, false);
+      } else {
+        showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      }
+    } catch (err) {
+      console.error(err);
+      showBanner("Could not reach the server. Please try again.", true);
     }
-    await loadAll();   // reload either way, so the list shows what the server now says
+    await loadAll();   // reload either way, so the list and its buttons match what the server now says
   }
 
   // ---- Reject (a reason is required) ----
@@ -432,15 +437,22 @@
     const target = rejecting;
     const submit = e.target.querySelector("button[type=submit]");
     submit.disabled = true;
-    const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    });
-    const body = await readJson(res);
-    submit.disabled = false;
-    dialog.close();
-    if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
-    else showBanner(errorText(body), true);
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      const body = await readJson(res);
+      dialog.close();
+      if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
+      else showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+    } catch (err) {
+      console.error(err);
+      dialog.close();
+      showBanner("Could not reach the server. Please try again.", true);
+    } finally {
+      submit.disabled = false;   // the same button is reused every time the dialog opens
+    }
     await loadAll();
   });
 
