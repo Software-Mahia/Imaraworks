@@ -9,44 +9,48 @@ KamiLimu ICT Track case study.
 python -m venv venv
 venv\Scripts\Activate.ps1        # Windows PowerShell
 pip install -r requirements.txt  # re-run after every pull that changes requirements.txt
-
-# Local development only (set in every new terminal):
-export DJANGO_DEBUG=1            # Git Bash. PowerShell: $env:DJANGO_DEBUG = "1"
-
 python manage.py migrate
 python manage.py seed_users
 python manage.py runserver
 ```
 
-If you see `DJANGO_SECRET_KEY is not set`, you forgot `DJANGO_DEBUG=1`.
 If you see `No module named 'whitenoise'` (or any other module), re-run `pip install -r requirements.txt`.
 ### Settings
 
-Deployment settings come from environment variables, never from the code
-(issue #21). Without `DJANGO_DEBUG=1` the app runs in production mode and
-refuses to start unless a secret key is set.
+Settings are split by environment (issue #24), and secrets come from
+environment variables, never from the code (issue #21):
+
+- `imaraworks/settings/base.py`: everything shared.
+- `imaraworks/settings/dev.py`: used by `manage.py` by default. DEBUG on, SQLite, no setup needed.
+  Tests and CI use it too.
+- `imaraworks/settings/prod.py`: used by `wsgi.py`/`asgi.py`. DEBUG always off, and it refuses to
+  start unless every variable below is set.
 
 | Variable | Local development | Deployed demo |
 |---|---|---|
-| `DJANGO_DEBUG` | `1` | leave unset (DEBUG off) |
+| `DJANGO_SETTINGS_MODULE` | not needed | **required**: `imaraworks.settings.prod`, so `manage.py` commands on the server use prod too |
 | `DJANGO_SECRET_KEY` | not needed | **required**: a new random key, kept out of git |
-| `DJANGO_ALLOWED_HOSTS` | not needed (defaults to `localhost,127.0.0.1`) | the demo's domain, comma-separated |
+| `DJANGO_ALLOWED_HOSTS` | not needed (defaults to `localhost,127.0.0.1`) | **required**: the demo's domain, comma-separated |
+| `DATABASE_URL` | don't set it | **required**: the database URL, e.g. `postgres://user:password@host:5432/name` |
 
 Generate a key with
 `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`.
-Tests (`python manage.py test`) need none of these.
+
+If `DATABASE_URL` is set while the dev settings are loaded, the app refuses to start: that means
+it is running on the server without `DJANGO_SETTINGS_MODULE`, and would otherwise use a local
+SQLite file instead of the real database.
 
 ## Test accounts (local password: `password123`)
 
-`password123` is for local development only. With DEBUG off, `seed_users`
-refuses to run unless `SEED_USER_PASSWORD` is set, so the deployed demo's
-accounts get a password that is not in this repo (issue #21).
+`password123` is for local development only. With the prod settings (DEBUG off),
+`seed_users` refuses to run unless `SEED_USER_PASSWORD` is set, so the deployed
+demo's accounts get a password that is not in this repo (issue #21).
 
 | Username | Role |
 |---|---|
 | alice, brian | Employee |
 | carol, david | Manager |
-| faith | Finance Officer |
+| faith, fiona | Finance Officer |
 | grace | Administrator |
 
 ## Project structure

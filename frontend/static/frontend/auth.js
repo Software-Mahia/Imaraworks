@@ -5,7 +5,12 @@
 const AUTH = (() => {
   const ACCESS_KEY = "imaraworks_access";
   const REFRESH_KEY = "imaraworks_refresh";
-
+  // Where each role lands after signing in. One map, shared by the login page and every page guard.
+  // ADMIN is left out until the team decides on an admin page.
+  const HOME_BY_ROLE = { EMPLOYEE: "/employee/", MANAGER: "/manager/", FINANCE: "/finance/" };
+  function homeFor(role) {
+    return Object.hasOwn(HOME_BY_ROLE, role) ? HOME_BY_ROLE[role] : null;
+  }
   // NOTE on localStorage: simplest option for a project this size, but tokens stored here are
   // readable by any JS that runs on the page. That is why every page must escape data before
   // putting it into innerHTML (see esc() in manager.html and finance.html): one XSS hole
@@ -105,12 +110,32 @@ const AUTH = (() => {
     if (!res.ok) throw new Error("Could not load the current user.");
     return res.json(); // { username, first_name, last_name, role }  role is null for an account with no profile
   }
+  // Call this first on every role page:  const me = await AUTH.requireRole(["MANAGER"]); if (!me) return;
+  // Convenience for the user, not security: the API still enforces every rule.
+  // Returns the user if their role is allowed. Otherwise it starts a redirect and returns null.
+  async function requireRole(allowedRoles) {
+    if (!getAccess()) { window.location.href = "/login/"; return null; }
+    let user;
+    try {
+      user = await getCurrentUser();
+    } catch (err) {
+      window.location.href = "/login/"; // expired session, or /me/ failed
+      return null;
+    }
+    if (allowedRoles.includes(user.role)) return user;
+    const home = homeFor(user.role);
+    if (home) window.location.href = home;
+    else logout();   // ADMIN or no role: no page for them, so end the session
+    return null;
+  }
 
   return {
     login,
     logout,
     apiFetch,
     getCurrentUser,
+    homeFor,
+    requireRole,
     isLoggedIn: () => !!getAccess(),
   };
 })();

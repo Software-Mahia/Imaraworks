@@ -14,7 +14,12 @@ from apps.accounts.models import Profile
 from apps.audit.models import AuditLog
 from apps.payment_requests.models import PaymentRequest, Project
 from apps.payments.models import PaymentTransaction
-from apps.payments.services import PaymentDenied, initiate_payment
+from apps.payments.services import (
+    MSG_SELF_PAYMENT,
+    PaymentDenied,
+    SelfPaymentDenied,
+    initiate_payment,
+)
 from apps.vendors.models import Vendor
 
 
@@ -56,7 +61,7 @@ class MockGatewayDeclineTests(TestCase):
     def test_mock_succeeds_by_default(self):
         req = make_approved_request(self.alice)
         key = str(uuid4())
-        result = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
+        result = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key)
         self.assertEqual(result.transaction.status, PaymentTransaction.SUCCESS)
         self.assertTrue(result.charge_result.status == "SUCCESS")
 
@@ -64,7 +69,7 @@ class MockGatewayDeclineTests(TestCase):
         req = make_approved_request(self.alice)
         key = str(uuid4())
         result = initiate_payment(
-            actor=self.alice,
+            actor=self.faith,
             payment_request=req,
             idempotency_key=key,
             description="Request #1 - Test Vendor - FAIL this payment",
@@ -77,7 +82,7 @@ class MockGatewayDeclineTests(TestCase):
         req = make_approved_request(self.alice)
         key = str(uuid4())
         result = initiate_payment(
-            actor=self.alice,
+            actor=self.faith,
             payment_request=req,
             idempotency_key=key,
             description="please fail this one",
@@ -90,13 +95,14 @@ class IdempotencyTests(TestCase):
 
     def setUp(self):
         self.alice = make_user("alice", Profile.EMPLOYEE)
+        self.faith = make_user("faith", Profile.FINANCE)  # the payer: nobody pays their own request
 
     def test_same_key_returns_existing_transaction(self):
         req = make_approved_request(self.alice)
         key = str(uuid4())
 
-        result1 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
-        result2 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
+        result1 = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key)
+        result2 = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key)
 
         self.assertTrue(result2.replayed)
         self.assertEqual(result1.transaction.pk, result2.transaction.pk)
@@ -108,12 +114,12 @@ class IdempotencyTests(TestCase):
         key1 = str(uuid4())
         key2 = str(uuid4())
 
-        result1 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key1)
+        result1 = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key1)
         self.assertEqual(result1.transaction.status, PaymentTransaction.SUCCESS)
 
         # Second attempt with different key should be denied
         with self.assertRaises(PaymentDenied) as ctx:
-            initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key2)
+            initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key2)
         self.assertIn("already been paid", ctx.exception.reason)
 
     def test_key_reuse_on_different_request_allowed(self):
@@ -123,11 +129,11 @@ class IdempotencyTests(TestCase):
         key = str(uuid4())
 
         # Pay req1 with key
-        result1 = initiate_payment(actor=self.alice, payment_request=req1, idempotency_key=key)
+        result1 = initiate_payment(actor=self.faith, payment_request=req1, idempotency_key=key)
         self.assertEqual(result1.transaction.status, PaymentTransaction.SUCCESS)
 
         # Pay req2 with same key - should work (different request)
-        result2 = initiate_payment(actor=self.alice, payment_request=req2, idempotency_key=key)
+        result2 = initiate_payment(actor=self.faith, payment_request=req2, idempotency_key=key)
         self.assertEqual(result2.transaction.status, PaymentTransaction.SUCCESS)
         self.assertNotEqual(result1.transaction.pk, result2.transaction.pk)
 
@@ -138,7 +144,7 @@ class IdempotencyTests(TestCase):
 
         # First attempt fails
         result1 = initiate_payment(
-            actor=self.alice,
+            actor=self.faith,
             payment_request=req,
             idempotency_key=key1,
             description="FAIL",
@@ -147,7 +153,7 @@ class IdempotencyTests(TestCase):
 
         # Retry with new key should succeed
         key2 = str(uuid4())
-        result2 = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key2)
+        result2 = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key2)
         self.assertEqual(result2.transaction.status, PaymentTransaction.SUCCESS)
 
 
@@ -172,7 +178,7 @@ class ConcurrencyTests(TransactionTestCase):
             # Small stagger to reduce SQLite lock contention in test
             time.sleep(0.01)
             try:
-                result = initiate_payment(actor=self.alice, payment_request=req, idempotency_key=key)
+                result = initiate_payment(actor=self.faith, payment_request=req, idempotency_key=key)
                 results.append(result)
             except (PaymentDenied, OperationalError) as e:
                 errors.append(e)
@@ -220,33 +226,69 @@ class PaymentViewTests(TestCase):
     def test_finance_can_pay(self):
         req = make_approved_request(self.alice)
         self._auth(self.faith)
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["status"], "SUCCESS")
 
     def test_employee_cannot_pay(self):
         req = make_approved_request(self.alice)
         self._auth(self.alice)
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 403)
 
     def test_manager_cannot_pay(self):
         req = make_approved_request(self.alice)
         mgr = make_user(f"mgr_{uuid4().hex[:6]}", Profile.MANAGER)
         self._auth(mgr)
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 403)
 
     def test_admin_cannot_pay(self):
         req = make_approved_request(self.alice)
         admin = make_user(f"admin_{uuid4().hex[:6]}", Profile.ADMIN)
         self._auth(admin)
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 403)
+
+    def test_finance_cannot_pay_own_request(self):
+        """#33: separation of duties. 403, and nothing is written."""
+        req = make_approved_request(self.faith)
+        self._auth(self.faith)
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data["detail"], MSG_SELF_PAYMENT)
+        req.refresh_from_db()
+        self.assertEqual(req.status, PaymentRequest.APPROVED)
+        self.assertFalse(PaymentTransaction.objects.filter(request=req).exists())
+        self.assertFalse(AuditLog.objects.filter(request=req).exists())
+
+    def test_own_request_that_is_not_payable_is_409(self):
+        """Status is checked before the requester, in the same order as approve()."""
+        req = make_approved_request(self.faith)
+        req.status = PaymentRequest.PENDING_APPROVAL
+        req.save()
+        self._auth(self.faith)
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
+        self.assertEqual(response.status_code, 409)
+
+    def test_service_refuses_self_payment(self):
+        """The rule lives in initiate_payment(), so every caller gets it, not just the view."""
+        req = make_approved_request(self.faith)
+        with self.assertRaises(SelfPaymentDenied):
+            initiate_payment(payment_request=req, actor=self.faith, idempotency_key=str(uuid4()))
+
+    def test_old_pay_url_is_gone(self):
+        """#33 moved pay next to approve/reject/submit; the old path no longer exists."""
+        req = make_approved_request(self.alice)
+        self._auth(self.faith)
+        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(PaymentTransaction.objects.filter(request=req).exists())
 
     def test_unauthenticated_cannot_pay(self):
         req = make_approved_request(self.alice)
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 401)
 
     def test_idempotency_key_replay(self):
@@ -255,11 +297,11 @@ class PaymentViewTests(TestCase):
         self._auth(self.faith)
         key = str(uuid4())
 
-        r1 = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+        r1 = self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
         self.assertEqual(r1.status_code, 201)
         self.assertFalse(r1.data["replayed"])
 
-        r2 = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+        r2 = self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
         self.assertEqual(r2.status_code, 200)
         self.assertTrue(r2.data["replayed"])
         self.assertEqual(r1.data["id"], r2.data["id"])
@@ -269,10 +311,10 @@ class PaymentViewTests(TestCase):
         req = make_approved_request(self.alice)
         self._auth(self.faith)
 
-        r1 = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": str(uuid4())})
+        r1 = self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": str(uuid4())})
         self.assertEqual(r1.status_code, 201)
 
-        r2 = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": str(uuid4())})
+        r2 = self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": str(uuid4())})
         self.assertEqual(r2.status_code, 409)
         self.assertIn("already been paid", r2.data["detail"])
 
@@ -282,7 +324,7 @@ class PaymentViewTests(TestCase):
         self._auth(self.faith)
 
         response = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"description": "FAIL this payment", "idempotency_key": str(uuid4())}
         )
         self.assertEqual(response.status_code, 201)
@@ -299,7 +341,7 @@ class PaymentViewTests(TestCase):
         self._auth(self.faith)
 
         r1 = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"description": "FAIL", "idempotency_key": str(uuid4())}
         )
         self.assertEqual(r1.data["status"], "FAILED")
@@ -307,7 +349,7 @@ class PaymentViewTests(TestCase):
         self.assertEqual(req.status, PaymentRequest.FAILED)
 
         r2 = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"idempotency_key": str(uuid4())}
         )
         self.assertEqual(r2.status_code, 201)
@@ -322,14 +364,14 @@ class PaymentViewTests(TestCase):
 
         # First attempt fails
         r1 = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"description": "FAIL", "idempotency_key": str(uuid4())}
         )
         self.assertEqual(r1.data["status"], "FAILED")
 
         # Retry succeeds
         r2 = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"idempotency_key": str(uuid4())}
         )
         self.assertEqual(r2.status_code, 201)
@@ -350,14 +392,14 @@ class PaymentViewTests(TestCase):
                 status=status,
             )
             self._auth(self.faith)
-            response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+            response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
             self.assertEqual(response.status_code, 409, f"Status {status} should be 409")
 
     def test_payment_transaction_list_finance_only(self):
         """Finance can list transactions; others get 403."""
         req = make_approved_request(self.alice)
         self._auth(self.faith)
-        self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        self.client.post(f"/api/payment-requests/{req.pk}/pay/")
 
         self._auth(self.faith)
         r = self.client.get("/api/payments/transactions/")
@@ -386,7 +428,7 @@ class AmountOverrideTests(TestCase):
         self._auth(self.faith)
 
         response = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"amount": "500000"},
         )
         self.assertEqual(response.status_code, 422)
@@ -402,7 +444,7 @@ class AmountOverrideTests(TestCase):
         req = make_approved_request(self.alice, amount="24500.00")
         self._auth(self.faith)
 
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["amount"], "24500.00")
         self.assertEqual(Decimal(response.data["amount"]), Decimal("24500.00"))
@@ -423,7 +465,7 @@ class UnknownGatewayTests(TestCase):
     def test_unknown_gateway_returns_422_and_leaves_request_approved(self):
         req = make_approved_request(self.alice)
         response = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"gateway": "nope"},
         )
         self.assertEqual(response.status_code, 422)
@@ -440,13 +482,13 @@ class UnknownGatewayTests(TestCase):
         req = make_approved_request(self.alice)
 
         bad = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"gateway": "nope"},
         )
         self.assertEqual(bad.status_code, 422)
 
         good = self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"gateway": "mock"},
         )
         self.assertEqual(good.status_code, 201)
@@ -473,7 +515,7 @@ class GatewayExceptionTests(TestCase):
         req = make_approved_request(self.alice)
 
         with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
-            response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+            response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
 
         self.assertEqual(response.status_code, 502)
         self.assertIn("transaction", response.data)
@@ -490,10 +532,10 @@ class GatewayExceptionTests(TestCase):
         req = make_approved_request(self.alice)
 
         with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
-            first = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+            first = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(first.status_code, 502)
 
-        second = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        second = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(second.status_code, 201)
         self.assertEqual(second.data["status"], "SUCCESS")
 
@@ -512,7 +554,7 @@ class AuditTrailTests(TestCase):
 
     def test_success_writes_started_then_paid(self):
         req = make_approved_request(self.alice, amount="24500.00")
-        response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+        response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 201)
 
         entries = self._entries(req)
@@ -528,7 +570,7 @@ class AuditTrailTests(TestCase):
     def test_decline_writes_started_then_failed(self):
         req = make_approved_request(self.alice)
         self.client.post(
-            f"/api/payments/payment-requests/{req.pk}/pay/",
+            f"/api/payment-requests/{req.pk}/pay/",
             {"description": "FAIL", "idempotency_key": str(uuid4())},
         )
 
@@ -539,7 +581,7 @@ class AuditTrailTests(TestCase):
     def test_gateway_exception_writes_failed_entry(self):
         req = make_approved_request(self.alice)
         with mock.patch("apps.payments.services.get_gateway", return_value=_BoomGateway()):
-            response = self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/")
+            response = self.client.post(f"/api/payment-requests/{req.pk}/pay/")
         self.assertEqual(response.status_code, 502)
 
         entries = self._entries(req)
@@ -549,8 +591,8 @@ class AuditTrailTests(TestCase):
     def test_replay_does_not_duplicate_audit_entries(self):
         req = make_approved_request(self.alice)
         key = str(uuid4())
-        self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
-        self.client.post(f"/api/payments/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+        self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
+        self.client.post(f"/api/payment-requests/{req.pk}/pay/", {"idempotency_key": key})
 
         entries = self._entries(req)
         self.assertEqual([e.action for e in entries], [AuditLog.PAYMENT_STARTED, AuditLog.PAID])

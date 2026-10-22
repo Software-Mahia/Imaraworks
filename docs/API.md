@@ -106,6 +106,41 @@ Sorted by name.
 | FINANCE | All requests | Yes |
 | ADMIN | None (deliberate: admins manage users, not payments) | No (403) |
 
+## Payments
+
+### POST /api/payment-requests/<id>/pay/
+
+FINANCE only. Pays an `APPROVED` request, or retries a `FAILED` one, through the mock provider. The amount charged is always the request's approved amount.
+
+Body (all optional):
+```json
+{"idempotency_key": "a uuid", "currency": "KES", "gateway": "mock", "description": "..."}
+```
+- Send the same `idempotency_key` when retrying after a network error: you get the first attempt back (`"replayed": true`), not a second charge. One is generated if you leave it out.
+- A `description` containing "FAIL" makes the mock provider decline (for demos).
+
+Response (201 new attempt, 200 replay):
+```json
+{
+  "id": 7, "request": 1, "status": "SUCCESS", "amount": "24500.00", "currency": "KES",
+  "provider_reference": "MOCK-...", "provider_reason": "", "replayed": false,
+  "created_at": "2026-10-20T08:00:00Z", "completed_at": "2026-10-20T08:00:01Z"
+}
+```
+`status` is `SUCCESS` (request becomes `PAID`) or `FAILED` (request becomes `FAILED` and can be retried).
+
+| Status | When |
+|---|---|
+| 403 | Not FINANCE, or the request is your own (`"You cannot pay a request you created."`) |
+| 404 | No such request |
+| 409 | Not payable (not `APPROVED`/`FAILED`), already paid, or a payment is in progress |
+| 422 | `amount` was sent (it is never accepted), or unknown `gateway` |
+| 502 | The provider errored; the attempt is recorded `FAILED` |
+
+### GET /api/payments/transactions/
+
+FINANCE only. Every payment attempt, newest first (plain array).
+
 ## Errors
 
 | Status | Body | When |
@@ -118,9 +153,38 @@ Sorted by name.
 
 DRF generates the `detail` wording, so check one real response before relying on exact text. The shapes are reliable.
 
+## Reports
+
+### GET /api/reports/summary/
+
+Totals over the requests **you can see**, using the same rule as the request list ("Who sees what" above). Managers and finance get totals for everything; an employee gets totals for their own requests only. ADMIN gets 403 (`"Your role cannot view reports."`), for the same reason they see no requests. Read-only: other methods return 405.
+
+```json
+{
+  "overall":          {"count": 4, "total": "281500.00"},
+  "pending_approval": {"count": 2, "total": "215000.00"},
+  "paid":             {"count": 1, "total": "24500.00"},
+  "by_status": [
+    {"status": "DRAFT", "label": "Draft", "count": 0, "total": "0.00"},
+    {"status": "PENDING_APPROVAL", "label": "Pending Approval", "count": 2, "total": "215000.00"}
+  ],
+  "by_project": [{"id": 3, "name": "Kisumu Project", "count": 2, "total": "190000.00"}],
+  "by_vendor":  [{"id": 2, "name": "Prime Cement Supplies", "count": 2, "total": "215000.00"}]
+}
+```
+
+- `by_status` always lists **all 8 statuses** in lifecycle order (DRAFT … FAILED), with zeros for unused ones, so a dashboard always has the same rows. (Shortened above.)
+- `by_project` and `by_vendor` list only those with at least one request, biggest total first.
+- Amounts are 2dp **strings**, as everywhere else in this API, so nothing is rounded by a float.
+- `total` adds up `amount` across requests in any status. Use `paid` for money actually paid out.
+
+Optional filter: `?status=PAID` (any status value above, uppercase) narrows the requests **before** every total, so `by_project` and `by_vendor` show only paid money. The filter applies inside what you can already see, so an employee still gets only their own requests. With a filter, the `pending_approval` and `paid` blocks follow it too (e.g. `pending_approval` is zero under `?status=PAID`). An unknown value gives 400: `{"status": ["\"BOGUS\" is not a valid choice."]}`.
+
+Optional date range: `?date_from=2026-10-01&date_to=2026-10-31` (YYYY-MM-DD, either one alone is fine) keeps requests whose `date` is in the range, **including both end days**, so that example is all of October. It combines with `?status=`. A badly formatted date gives 400 on that field, and `date_from` after `date_to` gives 400: `{"date_to": ["Must be on or after date_from."]}`.
+
 ## Not built yet
 
-Submit, approve and reject; payment processing; audit trail; reports; search filters on the list. Don't call these. Their contracts will be added here by the people who build them.
+Submit, approve and reject; payment processing; audit trail; search filters on the list. Don't call these. Their contracts will be added here by the people who build them.
 
 ## Test users
 

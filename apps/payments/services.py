@@ -22,6 +22,19 @@ class PaymentDenied(Exception):
         self.reason = reason
 
 
+MSG_SELF_PAYMENT = "You cannot pay a request you created."
+
+
+class SelfPaymentDenied(PaymentDenied):
+    """Raised when Finance tries to pay their own request (#33).
+
+    A subclass, so callers that only catch PaymentDenied still refuse it; the
+    view answers 403 for this one and 409 for the rest.
+    """
+    def __init__(self):
+        super().__init__(MSG_SELF_PAYMENT)
+
+
 class PaymentGatewayError(Exception):
     """Raised when a gateway raises while charging.
 
@@ -92,6 +105,7 @@ def initiate_payment(
 
     Raises:
         PaymentDenied: If request is not payable, already paid, or key conflicts.
+        SelfPaymentDenied: If `actor` created the request (a PaymentDenied subclass).
         PaymentGatewayError: If the gateway raises; the attempt is recorded FAILED first.
         KeyError: If `gateway_name` is not a registered gateway (no state is written).
     """
@@ -122,6 +136,11 @@ def initiate_payment(
 
         if locked_request.status not in PAYABLE_STATUSES:
             raise PaymentDenied(f"Request is not payable (status: {locked_request.status})")
+
+        # Separation of duties, as for approvals: nobody pays their own request.
+        # Checked after the status, in the same order as approve() (409, then 403).
+        if locked_request.requester_id == actor.pk:
+            raise SelfPaymentDenied()
 
         # The approved amount is authoritative, read under the lock.
         charge_amount = locked_request.amount

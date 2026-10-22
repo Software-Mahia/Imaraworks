@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -78,10 +78,10 @@
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who">Faith Njeri · Finance Officer</div>
+  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a></div>
 </header>
 
-<main class="container">
+<main class="container" id="app" hidden>
   <h1>Finance</h1>
   <div id="banner" role="status" hidden></div>
 
@@ -150,10 +150,11 @@
   </form>
 </dialog>
 
+<script src="{% static 'frontend/auth.js' %}"></script>
 <script>
   // ---- SETTINGS ----
   // Placeholder: the real logged-in user will come from the API (a "who am I" endpoint).
-  const CURRENT_USER = "Faith Njeri";
+  let CURRENT_USER = "";
 
   // ---- PLACEHOLDER DATA ----
   // Remove once the API exists and use loadRequests() below instead.
@@ -363,6 +364,16 @@
     if (btn.dataset.action === "reject") openReject(id);
     if (btn.dataset.action === "pay") pay(id, btn);
   });
+  // ---- Role check: only a FINANCE user may see this page. Convenience only; the API enforces the rules. ----
+  (async () => {
+    const me = await AUTH.requireRole(["FINANCE"]);
+    if (!me) return;
+    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
+    CURRENT_USER = name;
+    document.getElementById("who").textContent = `${name} · Finance Officer`;
+    renderAll();
+    document.getElementById("app").hidden = false;
+  })();
 </script>
 
 </body>

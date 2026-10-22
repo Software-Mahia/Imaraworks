@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -130,10 +130,10 @@
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who">Carol Wanjiku · Manager</div>
+  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a></div>
 </header>
 
-<main class="container">
+<main class="container" id="app" hidden>
   <div class="page-head">
     <h1>Awaiting your approval</h1>
     <p>Oldest requests are listed first.</p>
@@ -170,10 +170,11 @@
   </form>
 </dialog>
 
+<script src="{% static 'frontend/auth.js' %}"></script>
 <script>
   // ---- SETTINGS ----
   // Placeholder: the real logged-in user will come from the API (e.g. a "who am I" endpoint).
-  const CURRENT_USER = "Carol Wanjiku";
+  let CURRENT_USER = "";
   const FINANCE_THRESHOLD = 50000; // requests above this also need Finance sign-off
 
   // ---- PLACEHOLDER DATA ----
@@ -314,6 +315,16 @@
     if (btn.dataset.action === "approve") approve(id);
     if (btn.dataset.action === "reject") openReject(id);
   });
+  // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
+  (async () => {
+    const me = await AUTH.requireRole(["MANAGER"]);
+    if (!me) return;
+    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
+    CURRENT_USER = name;   // the placeholder "own request" hint compares display names until the real endpoints are wired
+    document.getElementById("who").textContent = `${name} · Manager`;
+    render();              // draw again now that CURRENT_USER is known
+    document.getElementById("app").hidden = false;
+  })();
 </script>
 
 </body>
