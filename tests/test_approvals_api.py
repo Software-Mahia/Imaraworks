@@ -86,6 +86,23 @@ class QueueApiTests(ApprovalsApiTestCase):
             self.assertEqual(resp.status_code, 403)
             self.assertEqual(resp.data['detail'], logic.MSG_ROLE_CANNOT)
 
+    def test_queue_query_count_does_not_grow_with_requests(self):
+        # Guards against N+1: each item shows its vendor, project and requester
+        # names and its approval block, so all of them must be loaded up front.
+        self.as_user(self.carol)
+
+        def count_queries():
+            with CaptureQueriesContext(connection) as ctx:
+                resp = self.client.get(self.url)
+            return len(resp.data), len(ctx)
+
+        self.make_request('24500')
+        items, with_one = count_queries()
+        self.assertEqual(items, 1)
+        for amount, requester in (('67000', self.alice), ('148000', self.brian), ('42000', self.brian)):
+            self.make_request(amount, requester=requester)
+        self.assertEqual(count_queries(), (4, with_one))
+
 
 class ApproveApiTests(ApprovalsApiTestCase):
 
