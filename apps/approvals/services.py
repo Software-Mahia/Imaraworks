@@ -24,10 +24,11 @@ so the wrapper holds no business rules -- it only reads and writes.
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.accounts.permissions import get_role
 from apps.approvals.logic import (
+    MSG_ALREADY_APPROVED,
     approver_level,
     evaluate_approval,
     is_fully_approved,
@@ -140,13 +141,19 @@ def approval_summary(payment_request):
     """The API's ``approval`` block: which levels are needed, done and still to do.
 
     Lists are sorted so the JSON is the same every time.
+
+    Levels are only outstanding while the request is PENDING_APPROVAL. A draft
+    isn't waiting on anyone yet, and a rejected or paid request never will be,
+    so pages showing "Waiting on Manager" from this list stay correct.
+    ``required_levels`` is still shown for every status.
     """
     required = required_levels(payment_request.amount)
     approved = _counting_levels(payment_request) & required
+    outstanding = required - approved if payment_request.status == STATUS_PENDING else set()
     return {
         "required_levels": sorted(required),
         "approved_levels": sorted(approved),
-        "outstanding_levels": sorted(required - approved),
+        "outstanding_levels": sorted(outstanding),
     }
 
 
@@ -208,12 +215,20 @@ def approve(payment_request, user):
             approved_levels=_counting_levels(locked),
         )
 
-        Approval.objects.create(
-            request=locked,
-            approver=user,
-            decision=Approval.APPROVED,
-            level=decision.level,
-        )
+        # The constraint only fires if the lock didn't serialise the two
+        # approvers (SQLite ignores select_for_update). The other approver got
+        # there first, so this is the same answer decide_approval would have
+        # given: a 409, not a 500. Raising leaves the atomic block, which rolls
+        # back, so nothing is written.
+        try:
+            Approval.objects.create(
+                request=locked,
+                approver=user,
+                decision=Approval.APPROVED,
+                level=decision.level,
+            )
+        except IntegrityError:
+            raise ApprovalDenied(MSG_ALREADY_APPROVED)
         if locked.status != decision.new_status:
             locked.status = decision.new_status
             locked.save(update_fields=["status", "updated_at"])

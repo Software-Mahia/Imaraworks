@@ -178,7 +178,7 @@ class RejectApiTests(ApprovalsApiTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data, {
             'id': req.pk, 'status': PaymentRequest.REJECTED, 'reason': 'Duplicate invoice',
-            'approval': {'required_levels': [M], 'approved_levels': [], 'outstanding_levels': [M]},
+            'approval': {'required_levels': [M], 'approved_levels': [], 'outstanding_levels': []},
         })
 
     def test_missing_or_blank_reason_is_400(self):

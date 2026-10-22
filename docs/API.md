@@ -89,7 +89,7 @@ Sorted by name.
   "status": "DRAFT",
   "created_at": "2026-10-14T01:00:00Z",
   "updated_at": "2026-10-14T01:00:00Z",
-  "approval": {"required_levels": ["manager"], "approved_levels": [], "outstanding_levels": ["manager"]}
+  "approval": {"required_levels": ["manager"], "approved_levels": [], "outstanding_levels": []}
 }
 ```
 - `requester_name` is the full name, or the username if the user has no name set.
