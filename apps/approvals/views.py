@@ -11,10 +11,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import get_role
+from apps.payment_requests.serializers import PaymentRequestSerializer
 from apps.payment_requests.views import visible_requests
 
 from . import logic
-from .serializers import AmountChangeSerializer, QueueItemSerializer
+from .serializers import AmountChangeSerializer
 from .services import (
     MSG_ALREADY_SUBMITTED,
     MSG_AMOUNT_LOCKED,
@@ -66,7 +67,7 @@ class ApprovalQueueView(APIView):
 
     def get(self, request):
         items = approval_queue(request.user)
-        return Response(QueueItemSerializer(items, many=True).data)
+        return Response(PaymentRequestSerializer(items, many=True).data)
 
 
 class ApproveView(APIView):
@@ -121,7 +122,7 @@ class SubmitView(APIView):
         payment_request.refresh_from_db()
         # The full request plus its approval block (asked for on PR #5), so the
         # page can update the row without fetching it again.
-        return Response(QueueItemSerializer(payment_request).data)
+        return Response(PaymentRequestSerializer(payment_request).data)
 
 
 class AmountChangeView(APIView):
@@ -139,4 +140,4 @@ class AmountChangeView(APIView):
             return denied_response(exc)
         payment_request.refresh_from_db()
         # Same response as submit: the full request plus its approval block.
-        return Response(QueueItemSerializer(payment_request).data)
+        return Response(PaymentRequestSerializer(payment_request).data)
