@@ -21,3 +21,16 @@ class HealthTests(TestCase):
             res = self.client.get('/ready/')
         self.assertEqual(res.status_code, 503)
         self.assertEqual(res.json(), {'status': 'unavailable'})
+
+    def test_post_is_not_allowed(self):
+        self.assertEqual(self.client.post('/health/').status_code, 405)
+        self.assertEqual(self.client.post('/ready/').status_code, 405)
+
+    def test_responses_are_never_cached(self):
+        self.assertIn('no-store', self.client.get('/health/')['Cache-Control'])
+
+    def test_a_failed_readiness_check_is_logged(self):
+        with mock.patch('imaraworks.health.connection') as conn:
+            conn.cursor.side_effect = OperationalError('database down')
+            with self.assertLogs('imaraworks.health', level='ERROR'):
+                self.client.get('/ready/')
