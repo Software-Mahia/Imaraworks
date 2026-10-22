@@ -8,12 +8,13 @@ KamiLimu ICT Track case study.
 ```
 python -m venv venv
 venv\Scripts\Activate.ps1        # Windows PowerShell
-pip install -r requirements.txt
+pip install -r requirements.txt  # re-run after every pull that changes requirements.txt
 python manage.py migrate
 python manage.py seed_users
 python manage.py runserver
 ```
 
+If you see `No module named 'whitenoise'` (or any other module), re-run `pip install -r requirements.txt`.
 ### Settings
 
 Settings are split by environment (issue #24), and secrets come from
