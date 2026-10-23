@@ -22,7 +22,7 @@ def seed_password(environ, *, debug):
         return DEV_PASSWORD
     raise CommandError(
         'SEED_USER_PASSWORD is not set. The deployed demo must not use the dev '
-        'password; set SEED_USER_PASSWORD, or set DJANGO_DEBUG=1 for local development.'
+        'password; set SEED_USER_PASSWORD. (Locally, the dev settings use the dev password.)'
     )
 
 
@@ -38,6 +38,9 @@ class Command(BaseCommand):
             ('carol', 'Carol Wanjiku', Profile.MANAGER),
             ('david', 'David Mutua', Profile.MANAGER),
             ('faith', 'Faith Njeri', Profile.FINANCE),
+            # A second Finance officer, so faith's own requests can still get a
+            # finance approval and be paid (#15, #33).
+            ('fiona', 'Fiona Achieng', Profile.FINANCE),
             ('grace', 'Grace Kamau', Profile.ADMIN),
         ]
         for username, full_name, role in users_data:

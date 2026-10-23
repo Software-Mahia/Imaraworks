@@ -26,7 +26,7 @@ The queue, the submit and amount-change responses, the approve/reject responses,
   "outstanding_levels": ["finance"]
 }
 ```
-- `outstanding_levels` is empty once the request is fully approved.
+- `outstanding_levels` only lists levels while the request is `PENDING_APPROVAL`. It is empty once the request is fully approved, and for every other status (a draft isn't waiting on anyone yet; a rejected or paid request never will be). `required_levels` is shown for every status.
 
 ## Endpoints
 
@@ -96,7 +96,7 @@ No body.
   "id": 7,
   "status": "REJECTED",
   "reason": "Invoice does not match the delivery note",
-  "approval": {"required_levels": ["manager"], "approved_levels": [], "outstanding_levels": ["manager"]}
+  "approval": {"required_levels": ["manager"], "approved_levels": [], "outstanding_levels": []}
 }
 ```
 - Leading and trailing spaces are trimmed. A blank reason gives `400`.

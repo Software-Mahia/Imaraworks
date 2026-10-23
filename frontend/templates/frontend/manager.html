@@ -82,6 +82,8 @@
     margin-bottom: 16px;
   }
 
+  #banner.error { background: #F7E7E2; color: var(--danger); }
+
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
     text-align: left;
@@ -97,7 +99,6 @@
   .sub { display: block; font-size: 12px; color: var(--text-soft); margin-top: 3px; }
   .late { color: var(--late-text); font-weight: 600; }
   .actions { display: flex; gap: 8px; }
-  .own-note { font-size: 12px; color: var(--text-soft); max-width: 190px; }
 
   #empty-state { color: var(--text-soft); font-size: 14px; padding: 24px 0; text-align: center; }
 
@@ -162,7 +163,7 @@
   <form id="reject-form">
     <h2>Reject this request</h2>
     <p id="reject-target"></p>
-    <textarea id="reject-reason" placeholder="Why is this being rejected? The requester will see this." required></textarea>
+    <textarea id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
     <div class="dialog-actions">
       <button type="button" class="btn-secondary" id="reject-cancel">Cancel</button>
       <button type="submit" class="btn-reject">Reject request</button>
@@ -172,25 +173,29 @@
 
 <script src="{% static 'frontend/auth.js' %}"></script>
 <script>
-  // ---- SETTINGS ----
-  // Placeholder: the real logged-in user will come from the API (e.g. a "who am I" endpoint).
-  let CURRENT_USER = "";
-  const FINANCE_THRESHOLD = 50000; // requests above this also need Finance sign-off
+  // ---- State and elements ----
+  let queue = [];
+  const banner = document.getElementById("banner");
+  const tbody = document.getElementById("queue-body");
+  const emptyState = document.getElementById("empty-state");
+  const LEVEL_NAME = { manager: "a manager", finance: "Finance" };
 
-  // ---- PLACEHOLDER DATA ----
-  // Remove this block once the API exists and use loadQueue() below instead.
-  const hoursAgo = h => new Date(Date.now() - h * 3600 * 1000).toISOString();
+  // ---- Helpers ----
+  function showBanner(message, isError) {
+    banner.textContent = message;   // textContent: nothing from the server is ever run as HTML
+    banner.className = isError ? "error" : "";
+    banner.hidden = false;
+  }
 
-  let requests = [
-    { id: 1, vendor: "SwiftHaul Logistics", amount: 67000, invoice_ref: "SH-820", project: "Westlands", purpose: "Material transport", requester: "Alice Mwangi", submitted_at: hoursAgo(75) },
-    { id: 2, vendor: "PowerHire Kenya", amount: 42000, invoice_ref: "PH-912", project: "Kilimani", purpose: "Excavator rental", requester: "Brian Otieno", submitted_at: hoursAgo(20) },
-    { id: 3, vendor: "Metro Hardware Ltd.", amount: 24500, invoice_ref: "INV-1032", project: "Westlands", purpose: "Site materials", requester: "Alice Mwangi", submitted_at: hoursAgo(3) },
-    { id: 4, vendor: "Prime Cement Supplies", amount: 18000, invoice_ref: "PC-2201", project: "Kilimani", purpose: "Cement for foundation", requester: "Carol Wanjiku", submitted_at: hoursAgo(6) },
-  ];
+  async function readJson(res) {
+    try { return await res.json(); } catch (err) { return {}; }
+  }
 
-  // ---- HELPERS ----
-  // Escapes text before it goes into innerHTML, so a vendor name like "<script>" can't run as code.
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function errorText(body) {
+    if (body && body.detail) return String(body.detail);
+    const parts = Object.values(body || {}).flat().map(String);
+    return parts.length ? parts.join(" ") : "Something went wrong.";
+  }
 
   function waitingLabel(iso) {
     const h = Math.floor((Date.now() - new Date(iso)) / 3600000);
@@ -200,88 +205,101 @@
     return { text: d + (d === 1 ? " day" : " days"), late: h >= 48 };
   }
 
-  function showBanner(message) {
-    const banner = document.getElementById("banner");
-    banner.textContent = message;
-    banner.hidden = false;
+  function makeButton(text, cls, onClick) {
+    const b = document.createElement("button");
+    b.className = cls;
+    b.textContent = text;
+    b.addEventListener("click", onClick);
+    return b;
   }
 
-  // ---- RENDER ----
+  function sub(text) {
+    const s = document.createElement("span");
+    s.className = "sub";
+    s.textContent = text;
+    return s;
+  }
+
+  // ---- Render the queue ----
   function render() {
-    const body = document.getElementById("queue-body");
-    const empty = document.getElementById("empty-state");
-    body.innerHTML = "";
+    tbody.replaceChildren();
+    emptyState.hidden = queue.length > 0;
 
-    const sorted = [...requests].sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
-    empty.hidden = sorted.length > 0;
+    queue.forEach(r => {
+      const wait = waitingLabel(r.created_at);
+      const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
 
-    sorted.forEach(r => {
-      const wait = waitingLabel(r.submitted_at);
-      const isOwn = r.requester === CURRENT_USER;
-      const needsFinance = r.amount > FINANCE_THRESHOLD;
+      const requestCell = document.createElement("td");
+      requestCell.append(document.createTextNode(r.vendor_name), sub(r.reason),
+                         sub(`Invoice ${r.invoice_number}, ${r.project_name}`));
 
-      // NOTE: disabling approval of your own request here is only feedback for the user.
-      // The backend must enforce this rule too; the UI alone is never enough.
-      const actionsCell = isOwn
-        ? `<span class="own-note">You submitted this, so another manager needs to approve it.</span>`
-        : `<div class="actions">
-             <button class="btn-primary" data-action="approve" data-id="${Number(r.id)}">Approve</button>
-             <button class="btn-reject" data-action="reject" data-id="${Number(r.id)}">Reject</button>
-           </div>`;
+      const requesterCell = document.createElement("td");
+      requesterCell.textContent = r.requester_name || r.requester_username;
+
+      const amountCell = document.createElement("td");
+      amountCell.append(document.createTextNode(Number(r.amount).toLocaleString()));
+      if (others.length) amountCell.append(sub(others.map(l => LEVEL_NAME[l] || l).join(" and ") + " also signs off after you"));
+
+      const waitCell = document.createElement("td");
+      waitCell.textContent = wait.text;
+      if (wait.late) waitCell.className = "late";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      actions.append(
+        makeButton("Approve", "btn-primary", () => approve(r, actions)),
+        makeButton("Reject", "btn-reject", () => openReject(r)),
+      );
+      const actionCell = document.createElement("td");
+      actionCell.append(actions);
 
       const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>
-          ${esc(r.vendor)}
-          <span class="sub">${esc(r.purpose)}</span>
-          <span class="sub">Invoice ${esc(r.invoice_ref)}, ${esc(r.project)} project</span>
-        </td>
-        <td>${esc(r.requester)}</td>
-        <td>
-          ${Number(r.amount).toLocaleString()}
-          ${needsFinance ? '<span class="sub">Finance also signs off after you</span>' : ''}
-        </td>
-        <td class="${wait.late ? 'late' : ''}">${wait.text}</td>
-        <td>${actionsCell}</td>
-      `;
-      body.appendChild(row);
+      row.append(requestCell, requesterCell, amountCell, waitCell, actionCell);
+      tbody.append(row);
     });
   }
 
-  // ---- SWAP-IN POINT 1: load the queue from the API ----
-  // async function loadQueue() {
-  //   const response = await AUTH.apiFetch('/api/requests/?status=pending_approval');
-  //   requests = await response.json();
-  //   render();
-  // }
-  // loadQueue();
-
-  render();
-
-  // ---- APPROVE ----
-  async function approve(id) {
-    const r = requests.find(x => x.id === id);
-
-    // ---- SWAP-IN POINT 2: call the approve endpoint (URL is a guess, confirm with the backend) ----
-    // const response = await AUTH.apiFetch(`/api/requests/${id}/approve/`, { method: 'POST' });
-    // if (!response.ok) { showBanner('Could not approve this request.'); return; }
-
-    requests = requests.filter(x => x.id !== id);
+  // ---- Load the queue: requests waiting on MY decision, oldest first ----
+  async function loadQueue() {
+    const res = await AUTH.apiFetch("/api/approvals/queue/");
+    if (!res.ok) { showBanner("Could not load the approval queue.", true); return; }
+    queue = await res.json();
     render();
-    showBanner(r.amount > FINANCE_THRESHOLD
-      ? `Approved ${r.vendor}. It now goes to Finance for the second approval.`
-      : `Approved ${r.vendor}. It is ready for Finance to pay.`);
   }
 
-  // ---- REJECT (reason is required) ----
+  // ---- Approve ----
+  async function approve(r, actions) {
+    const buttons = actions.querySelectorAll("button");
+    buttons.forEach(b => { b.disabled = true; });   // a second click would only earn a 409
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
+      const body = await readJson(res);
+      if (res.ok) {
+        const left = (body.approval && body.approval.outstanding_levels) || [];
+        showBanner(left.length
+          ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
+          : `Approved ${r.vendor_name}. It is ready for Finance to pay.`, false);
+        await loadQueue();
+        return;
+      }
+      showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      if (res.status === 404 || res.status === 409) await loadQueue();   // the request changed under us: reload
+      else buttons.forEach(b => { b.disabled = false; });
+    } catch (err) {
+      console.error(err);
+      showBanner("Could not reach the server. Please try again.", true);
+      buttons.forEach(b => { b.disabled = false; });
+    }
+  }
+
+  // ---- Reject (a reason is required) ----
   const dialog = document.getElementById("reject-dialog");
   const reasonBox = document.getElementById("reject-reason");
-  let rejectingId = null;
+  let rejecting = null;
 
-  function openReject(id) {
-    const r = requests.find(x => x.id === id);
-    rejectingId = id;
-    document.getElementById("reject-target").textContent = `${r.vendor}, KES ${Number(r.amount).toLocaleString()}`;
+  function openReject(r) {
+    rejecting = r;
+    document.getElementById("reject-target").textContent = `${r.vendor_name}, KES ${Number(r.amount).toLocaleString()}`;
     reasonBox.value = "";
     dialog.showModal();
   }
@@ -291,39 +309,36 @@
   document.getElementById("reject-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const reason = reasonBox.value.trim();
-    if (!reason) return;
-    const r = requests.find(x => x.id === rejectingId);
-
-    // ---- SWAP-IN POINT 3: call the reject endpoint with the reason (URL is a guess) ----
-    // const response = await AUTH.apiFetch(`/api/requests/${rejectingId}/reject/`, {
-    //   method: 'POST',
-    //   body: JSON.stringify({ reason })   // apiFetch adds the token and the JSON Content-Type
-    // });
-    // if (!response.ok) { showBanner('Could not reject this request.'); return; }
-
-    requests = requests.filter(x => x.id !== rejectingId);
-    dialog.close();
-    render();
-    showBanner(`Rejected ${r.vendor}. Your reason has been recorded.`);
-  });
-
-  // ---- Button clicks (one listener for the whole table) ----
-  document.getElementById("queue-body").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    const id = Number(btn.dataset.id);
-    if (btn.dataset.action === "approve") approve(id);
-    if (btn.dataset.action === "reject") openReject(id);
+    if (!reason || !rejecting) return;
+    const target = rejecting;
+    const submit = e.target.querySelector("button[type=submit]");
+    submit.disabled = true;
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      const body = await readJson(res);
+      dialog.close();
+      if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
+      else showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      await loadQueue();
+    } catch (err) {
+      console.error(err);
+      dialog.close();
+      showBanner("Could not reach the server. Please try again.", true);
+    } finally {
+      submit.disabled = false;   // the same button is reused every time the dialog opens
+    }
   });
   // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
-  (async () => {
+    (async () => {
     const me = await AUTH.requireRole(["MANAGER"]);
     if (!me) return;
     const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-    CURRENT_USER = name;   // the placeholder "own request" hint compares display names until the real endpoints are wired
     document.getElementById("who").textContent = `${name} · Manager`;
-    render();              // draw again now that CURRENT_USER is known
     document.getElementById("app").hidden = false;
+    await loadQueue();   // the real data loads inside the guard, so wrong-role users never hit the API
   })();
 </script>
 
