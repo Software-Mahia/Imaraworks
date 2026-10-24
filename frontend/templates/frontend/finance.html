@@ -180,7 +180,6 @@
   let failReasons = {};      // request id -> reason from its latest failed payment attempt
   const pendingKeys = new Map();   // request id -> idempotency key of a payment whose outcome we have not seen yet
 
-    // The pay route is expected to move to /api/payment-requests/<id>/pay/ (decision on #33). Change it here only.
   const PAY_URL = id => `/api/payment-requests/${id}/pay/`;
   const banner = document.getElementById("banner");
   const filtersForm = document.getElementById("filters");
