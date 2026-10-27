@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include_scope: true
+    # Enable versioning for Dependabot auto-merges
+    allow:
+      - dependency-type: "direct"
+        update-type: "version-update:semver"
+      - dependency-type: "indirect"
+        update-type: "version-update:semver"
+    # Run on pull requests and schedule
+    # This will also trigger on new PRs to the repository
+    # The workflow will run the same checks as your CI
