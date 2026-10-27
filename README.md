@@ -1,50 +1,23 @@
 # ImaraWorks Vendor Payment & Approval System
 
-A Django REST API for submitting, approving and tracking vendor payment requests.
-KamiLimu ICT Track case study.
+A Django REST API for submitting, approving, paying and reporting vendor payment requests. KamiLimu ICT Track case study.
 
-## Setup
+![System architecture](docs/images/system_architecture.png)
+
+## Quick start
 
 ```
 python -m venv venv
-venv\Scripts\Activate.ps1        # Windows PowerShell
+venv\Scripts\Activate.ps1        # Windows; macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt  # re-run after every pull that changes requirements.txt
 python manage.py migrate
 python manage.py seed_users
 python manage.py runserver
 ```
 
-If you see `No module named 'whitenoise'` (or any other module), re-run `pip install -r requirements.txt`.
-### Settings
-
-Settings are split by environment (issue #24), and secrets come from
-environment variables, never from the code (issue #21):
-
-- `imaraworks/settings/base.py`: everything shared.
-- `imaraworks/settings/dev.py`: used by `manage.py` by default. DEBUG on, SQLite, no setup needed.
-  Tests and CI use it too.
-- `imaraworks/settings/prod.py`: used by `wsgi.py`/`asgi.py`. DEBUG always off, and it refuses to
-  start unless every variable below is set.
-
-| Variable | Local development | Deployed demo |
-|---|---|---|
-| `DJANGO_SETTINGS_MODULE` | not needed | **required**: `imaraworks.settings.prod`, so `manage.py` commands on the server use prod too |
-| `DJANGO_SECRET_KEY` | not needed | **required**: a new random key, kept out of git |
-| `DJANGO_ALLOWED_HOSTS` | not needed (defaults to `localhost,127.0.0.1`) | **required**: the demo's domain, comma-separated |
-| `DATABASE_URL` | don't set it | **required**: the database URL, e.g. `postgres://user:password@host:5432/name` |
-
-Generate a key with
-`python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`.
-
-If `DATABASE_URL` is set while the dev settings are loaded, the app refuses to start: that means
-it is running on the server without `DJANGO_SETTINGS_MODULE`, and would otherwise use a local
-SQLite file instead of the real database.
+Tests: `python manage.py test`.
 
 ## Test accounts (local password: `password123`)
-
-`password123` is for local development only. With the prod settings (DEBUG off),
-`seed_users` refuses to run unless `SEED_USER_PASSWORD` is set, so the deployed
-demo's accounts get a password that is not in this repo (issue #21).
 
 | Username | Role |
 |---|---|
@@ -53,26 +26,19 @@ demo's accounts get a password that is not in this repo (issue #21).
 | faith, fiona | Finance Officer |
 | grace | Administrator |
 
-## Project structure
+## Contributors
 
-- `apps/accounts` - roles, login, `/api/auth/me/`
-- `apps/vendors` - vendors
-- `apps/payment_requests` - payment requests, projects, validation
-- `apps/approvals`, `apps/payments`, `apps/audit`, `apps/reporting` - in progress
-- `frontend` - templates and static files
-- `tests` - automated tests
+| Name | GitHub | Area |
+|---|---|---|
+| Tamira Atieno | [@TamiraAtieno1](https://github.com/TamiraAtieno1) | Accounts, vendors and payment requests |
+| Joylynn Wamjiru | [@JoylynnWamjiru](https://github.com/JoylynnWamjiru) | Approvals, audit, reporting, settings and CI |
+| Lewis Gitau | [@codingwithgitau](https://github.com/codingwithgitau) | Frontend |
+| Isaac Mwangi | [@B1t-Master](https://github.com/B1t-Master) | Payments (mock provider) and DevOps |
 
-## Running tests
+## Documentation
 
-```
-python manage.py test
-```
-
-## Team
-
-| Area | Owner |
-|---|---|
-| Accounts, vendors, payment requests | A |
-| Approvals | B |
-| Payments | C |
-| Frontend | D |
+- [docs/API.md](docs/API.md) — endpoints, approval workflow, payments, reports, errors, conventions (and how to use `/admin/`, `/api-auth/`, headers/body)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system architecture, settings, security, health checks, deployment/Docker, CI
+- [docs/MOCK_PROVIDER.md](docs/MOCK_PROVIDER.md) — payment gateway design and the mock provider
+- [docs/RUNNING_IT_ON_YOUR_MACHINE.md](docs/RUNNING_IT_ON_YOUR_MACHINE.md) — local setup, Docker, admin/browsable API, headers and body inspection
+- [docs/PART_B_NOTES.md](docs/PART_B_NOTES.md) — Part B presentation notes

@@ -1,0 +1,28 @@
+databases:
+- name: imaraworks-db
+  plan: free
+  databaseName: imaraworks
+  user: imaraworks
+services:
+- type: web
+  name: imaraworks
+  runtime: python
+  plan: free
+  buildCommand: pip install -r requirements.txt && python manage.py collectstatic
+    --noinput
+  startCommand: python manage.py migrate && gunicorn imaraworks.wsgi:application --bind
+    0.0.0.0:$PORT --workers 3
+  healthCheckPath: /health/
+  envVars:
+  - key: DJANGO_SETTINGS_MODULE
+    value: imaraworks.settings.prod
+  - key: DJANGO_SECRET_KEY
+    generateValue: true
+  - key: DJANGO_ALLOWED_HOSTS
+    value: imaraworks.onrender.com
+  - key: DATABASE_URL
+    fromDatabase:
+      name: imaraworks-db
+      property: connectionString
+  - key: SEED_USER_PASSWORD
+    sync: false

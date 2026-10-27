@@ -1,0 +1,27 @@
+# Keep the image small and free of local state and secrets.
+
+# Version control and editor cruft
+.git/
+.gitignore
+.ruff_cache/
+
+# Local virtualenv and caches (dependencies are installed inside the image)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local database and generated static files (collectstatic runs in the image)
+db.sqlite3
+staticfiles/
+
+# Secrets and local config
+.env
+
+# Docs and case-study material not needed at runtime
+*.pdf
+docs/
+
+# Test and CI config
+tests/
+.github/

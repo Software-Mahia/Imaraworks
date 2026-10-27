@@ -1,0 +1,39 @@
+# Local development with Docker: `docker compose up --build`.
+#
+# SQLite stays for local development (issue #26 assumption): the database file
+# lives on a named volume so it survives container restarts, and the app is
+# reached at http://localhost:8000.
+#
+# Settings come from .env (copy .env.example to .env). DJANGO_DEBUG=1 keeps
+# production-only requirements like DJANGO_SECRET_KEY out of the way locally.
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Defaults for a first run; .env can override any of these.
+      # wsgi.py defaults to the prod settings; inside this container we run dev.
+      DJANGO_SETTINGS_MODULE: imaraworks.settings.dev
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      # Keep SQLite on the mounted volume so data survives a restart.
+      DJANGO_DB_PATH: "/app/data/db.sqlite3"
+      # The entrypoint runs `migrate` on every start; this also seeds the demo
+      # users (idempotent) so a fresh volume is ready to log into.
+      SEED_USERS: "1"
+    volumes:
+      # Persist the SQLite database across `docker compose` runs.
+      - sqlite_data:/app/data
+    # Kept in sync with DJANGO_DEBUG above so both settings agree.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sqlite_data:

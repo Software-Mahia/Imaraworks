@@ -8,6 +8,8 @@ Everything fails safe: if a variable is forgotten on the deployed demo, the
 app refuses to start. It never falls back to a development value in production.
 """
 
+from pathlib import Path
+
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
@@ -91,3 +93,15 @@ def refuse_dev_settings_on_server(environ):
             'DATABASE_URL is set, so this looks like the server, but the dev settings '
             'are loaded. Set DJANGO_SETTINGS_MODULE=imaraworks.settings.prod.'
         )
+
+
+def database_path_from(environ, *, base_dir):
+    """Path to the local SQLite database file.
+
+    Defaults to ``<project>/db.sqlite3`` so ordinary local runs are unchanged.
+    Containers set DJANGO_DB_PATH to a file on a mounted volume (see
+    docker-compose.yml), so the database survives a restart. SQLite is a local
+    development choice; the deployed demo uses managed Postgres (DATABASE_URL).
+    """
+    raw = environ.get('DJANGO_DB_PATH', '').strip()
+    return Path(raw) if raw else Path(base_dir) / 'db.sqlite3'

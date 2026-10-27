@@ -7,7 +7,12 @@ set. Everything shared lives in base.py.
 
 import os
 
-from imaraworks.env import allowed_hosts_from, refuse_dev_settings_on_server, secret_key_from
+from imaraworks.env import (
+    allowed_hosts_from,
+    database_path_from,
+    refuse_dev_settings_on_server,
+    secret_key_from,
+)
 
 from .base import *  # noqa: F401,F403
 from .base import BASE_DIR
@@ -24,6 +29,7 @@ ALLOWED_HOSTS = allowed_hosts_from(os.environ)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # DJANGO_DB_PATH lets a container put the file on a mounted volume.
+        'NAME': database_path_from(os.environ, base_dir=BASE_DIR),
     }
 }
