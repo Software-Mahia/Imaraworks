@@ -39,6 +39,4 @@ Tests: `python manage.py test`.
 
 - [docs/API.md](docs/API.md) — endpoints, approval workflow, payments, reports, errors, conventions (and how to use `/admin/`, `/api-auth/`, headers/body)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system architecture, settings, security, health checks, deployment/Docker, CI
-- [docs/MOCK_PROVIDER.md](docs/MOCK_PROVIDER.md) — payment gateway design and the mock provider
 - [docs/RUNNING_IT_ON_YOUR_MACHINE.md](docs/RUNNING_IT_ON_YOUR_MACHINE.md) — local setup, Docker, admin/browsable API, headers and body inspection
-- [docs/PART_B_NOTES.md](docs/PART_B_NOTES.md) — Part B presentation notes

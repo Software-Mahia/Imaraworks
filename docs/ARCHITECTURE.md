@@ -93,6 +93,4 @@ The host uses two unauthenticated endpoints (issue #27), both exempt from the HT
 ## Documentation map
 
 - [API.md](API.md) — every endpoint, approval workflow, payments, reports, conventions, errors, test users (including `/admin/` and `/api-auth/` usage)
-- [MOCK_PROVIDER.md](MOCK_PROVIDER.md) — payment gateway design and the mock provider
 - [RUNNING_IT_ON_YOUR_MACHINE.md](RUNNING_IT_ON_YOUR_MACHINE.md) — local setup, Docker, Django admin/browsable API, inspecting headers and bodies
-- [PART_B_NOTES.md](PART_B_NOTES.md) — Part B presentation notes
