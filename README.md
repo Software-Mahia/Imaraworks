@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/TamiraAtieno1/Imaraworks/badge.svg?branch=main)](https://coveralls.io/github/TamiraAtieno1/Imaraworks?branch=main)
+
 # ImaraWorks Vendor Payment & Approval System
 
 A Django REST API for submitting, approving, paying and reporting vendor payment requests. KamiLimu ICT Track case study.
