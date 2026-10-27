@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -42,5 +43,5 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: imaraworks.settings.prod
           DJANGO_SECRET_KEY: afc37db4a737d90e6d4e37967998281adaecede4b83acbf3e08735e9d9f9c38a32c63c9559ee47292ab39efb04e63a3c848e
-          DJANGO_ALLOWED_HOSTS: *.onrender.com,example.com
+          DJANGO_ALLOWED_HOSTS: "*.onrender.com,example.com"
           DATABASE_URL: postgres://user:pass@localhost:5432/test
