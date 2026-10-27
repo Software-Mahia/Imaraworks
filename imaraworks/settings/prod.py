@@ -29,4 +29,35 @@ if _render_hostname and _render_hostname not in _ALLOWED_HOSTS:
 
 ALLOWED_HOSTS = _ALLOWED_HOSTS
 
+
+
+# --- HTTPS only -------------------------------------------------------------
+# https://docs.djangoproject.com/en/5.2/topics/security/#ssl-https
+
+# The host (Render) ends HTTPS and forwards plain HTTP to Django, adding
+# X-Forwarded-Proto: https. This tells Django to trust that header. Without it,
+# Django sees every request as insecure and SECURE_SSL_REDIRECT loops forever.
+# Only safe because the host sets the header itself; never set this when
+# clients can reach Django directly.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Send any http:// request to https://.
+SECURE_SSL_REDIRECT = True
+
+# Except the health checks (#27): the host calls them over HTTP; everything else must still redirect.
+SECURE_REDIRECT_EXEMPT = [r'^health/$', r'^ready/$']
+
+# Only send the session and CSRF cookies over HTTPS, so they can't be read
+# off an unencrypted connection.
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# HSTS: browsers use HTTPS only for this site, for this many seconds.
+SECURE_HSTS_SECONDS = hsts_seconds_from(os.environ)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+# HSTS preload (security.W021) is left off on purpose: the browser preload list
+# is very hard to leave, requires a one-year max-age, and does not accept a
+# subdomain of a shared host such as *.onrender.com.
+SILENCED_SYSTEM_CHECKS = ['security.W021']
 DATABASES = {'default': database_from(os.environ)}
