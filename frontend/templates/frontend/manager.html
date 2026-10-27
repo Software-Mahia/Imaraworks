@@ -125,13 +125,15 @@
     resize: vertical;
   }
   .dialog-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
+  .signout:hover { background: rgba(255, 255, 255, 0.12); }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a></div>
+  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
 </header>
 
 <main class="container" id="app" hidden>
@@ -226,8 +228,8 @@
     emptyState.hidden = queue.length > 0;
 
     queue.forEach(r => {
-      const wait = waitingLabel(r.created_at);
-      const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
+      const wait = waitingLabel(r.submitted_at || r.created_at);
+     const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
 
       const requestCell = document.createElement("td");
       requestCell.append(document.createTextNode(r.vendor_name), sub(r.reason),
@@ -331,6 +333,7 @@
       submit.disabled = false;   // the same button is reused every time the dialog opens
     }
   });
+   document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
   // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
     (async () => {
     const me = await AUTH.requireRole(["MANAGER"]);

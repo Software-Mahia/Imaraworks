@@ -35,6 +35,10 @@
   button:disabled { opacity: 0.55; cursor: not-allowed; }
 
   .error { background: var(--bad-bg); color: var(--bad-text); border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+  .pw-wrap { position: relative; margin-bottom: 16px; }
+  .pw-wrap input { margin-bottom: 0; padding-right: 64px; }
+  .pw-wrap .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: auto; background: none; color: var(--navy); padding: 6px 8px; font-size: 12px; }
+  .pw-wrap .pw-toggle:hover:not(:disabled) { background: none; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -55,9 +59,10 @@
       <input id="username" name="username" autocomplete="username" required autofocus>
 
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
-
-      <button type="submit" id="submit-btn">Sign in</button>
+      <div class="pw-wrap">
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+      </div>      <button type="submit" id="submit-btn">Sign in</button>
     </form>
   </section>
 </main>
@@ -86,6 +91,16 @@
     window.location.href = home;
     return true;
   }
+
+  const pw = document.getElementById("password");
+  const pwToggle = document.getElementById("pw-toggle");
+  pwToggle.addEventListener("click", () => {
+    const show = pw.type === "password";
+    pw.type = show ? "text" : "password";
+    pwToggle.textContent = show ? "Hide" : "Show";
+    pwToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    pwToggle.setAttribute("aria-pressed", String(show));
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
