@@ -14,12 +14,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install coverage
 
       - name: Check migrations
         run: python manage.py makemigrations --check --dry-run
@@ -41,6 +42,6 @@ jobs:
         run: python manage.py check --deploy --fail-level WARNING
         env:
           DJANGO_SETTINGS_MODULE: imaraworks.settings.prod
-          DJANGO_SECRET_KEY: ci-check
-          DJANGO_ALLOWED_HOSTS: example.com
+          DJANGO_SECRET_KEY: afc37db4a737d90e6d4e37967998281adaecede4b83acbf3e08735e9d9f9c38a32c63c9559ee47292ab39efb04e63a3c848e
+          DJANGO_ALLOWED_HOSTS: *.onrender.com,example.com
           DATABASE_URL: postgres://user:pass@localhost:5432/test
