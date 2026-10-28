@@ -1,0 +1,35 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "docker"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "frontend"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"

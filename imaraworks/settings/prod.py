@@ -19,9 +19,16 @@ DEBUG = False
 
 SECRET_KEY = secret_key_from(os.environ, allow_dev_key=False)
 
-ALLOWED_HOSTS = allowed_hosts_from(os.environ, required=True)
+# Build ALLOWED_HOSTS from environment, then add Render's external hostname if available.
+# Render automatically sets RENDER_EXTERNAL_HOSTNAME - appending it means the demo
+# works without hardcoding the hostname in render.yaml or CI secrets.
+_ALLOWED_HOSTS = allowed_hosts_from(os.environ, required=True)
+_render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if _render_hostname and _render_hostname not in _ALLOWED_HOSTS:
+    _ALLOWED_HOSTS.append(_render_hostname)
 
-DATABASES = {'default': database_from(os.environ)}
+ALLOWED_HOSTS = _ALLOWED_HOSTS
+
 
 
 # --- HTTPS only -------------------------------------------------------------
@@ -37,9 +44,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Send any http:// request to https://.
 SECURE_SSL_REDIRECT = True
 
-# Except the health checks (#27): the host calls them over plain HTTP from
-# inside its network, and a redirect instead of a 200 would mark the app
-# unhealthy. Django matches these against the path without its leading slash.
+# Except the health checks (#27): the host calls them over HTTP; everything else must still redirect.
 SECURE_REDIRECT_EXEMPT = [r'^health/$', r'^ready/$']
 
 # Only send the session and CSRF cookies over HTTPS, so they can't be read
@@ -55,3 +60,4 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # is very hard to leave, requires a one-year max-age, and does not accept a
 # subdomain of a shared host such as *.onrender.com.
 SILENCED_SYSTEM_CHECKS = ['security.W021']
+DATABASES = {'default': database_from(os.environ)}

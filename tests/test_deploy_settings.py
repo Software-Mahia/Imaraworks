@@ -19,6 +19,7 @@ from imaraworks.env import (
     DEV_SECRET_KEY,
     allowed_hosts_from,
     database_from,
+    database_path_from,
     hsts_seconds_from,
     refuse_dev_settings_on_server,
     secret_key_from,
@@ -101,6 +102,22 @@ class DevOnServerGuardTests(SimpleTestCase):
         refuse_dev_settings_on_server({})   # no error
 
 
+class DatabasePathFromTests(SimpleTestCase):
+    """Containers can put the SQLite file on a mounted volume (DJANGO_DB_PATH)."""
+
+    def test_defaults_to_project_root(self):
+        path = database_path_from({}, base_dir='/srv/app')
+        self.assertEqual(str(path), '/srv/app/db.sqlite3')
+
+    def test_reads_the_env_path_when_set(self):
+        path = database_path_from({'DJANGO_DB_PATH': '/app/data/db.sqlite3'}, base_dir='/srv/app')
+        self.assertEqual(str(path), '/app/data/db.sqlite3')
+
+    def test_blank_path_counts_as_unset(self):
+        path = database_path_from({'DJANGO_DB_PATH': '   '}, base_dir='/srv/app')
+        self.assertEqual(str(path), '/srv/app/db.sqlite3')
+
+
 class HstsSecondsFromTests(SimpleTestCase):
     """HSTS starts short (1 hour): browsers remember it, so a mistake must expire soon."""
 
@@ -141,6 +158,13 @@ class SettingsModuleTests(SimpleTestCase):
         self.assertTrue(dev.DEBUG)
         self.assertEqual(dev.DATABASES['default']['ENGINE'], 'django.db.backends.sqlite3')
         self.assertEqual(dev.SECRET_KEY, DEV_SECRET_KEY)
+
+    def test_dev_puts_the_sqlite_file_where_django_db_path_says(self):
+        # Docker mounts /app/data as a volume, so the database survives a restart.
+        dev = load_settings(
+            'imaraworks.settings.dev', {'DJANGO_DB_PATH': '/app/data/db.sqlite3'}
+        )
+        self.assertEqual(str(dev.DATABASES['default']['NAME']), '/app/data/db.sqlite3')
 
     def test_dev_refuses_to_run_on_the_server(self):
         with self.assertRaises(ImproperlyConfigured):
