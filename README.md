@@ -1,4 +1,4 @@
-[![Coverage Status](https://coveralls.io/repos/github/TamiraAtieno1/Imaraworks/badge.svg?branch=main)](https://coveralls.io/github/TamiraAtieno1/Imaraworks?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/imaraworks-team/Imaraworks/badge.svg?branch=main)](https://coveralls.io/github/imaraworks-team/Imaraworks)
 
 # ImaraWorks Vendor Payment & Approval System
 
