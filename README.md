@@ -50,4 +50,9 @@ The free database expires on 2026-11-27; see [Database, backups and restore](doc
 - [docs/API.md](docs/API.md) — endpoints, approval workflow, payments, reports, errors, conventions (and how to use `/admin/`, `/api-auth/`, headers/body)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system architecture, settings, security, health checks, deployment/Docker, CI
 - [docs/RUNNING_IT_ON_YOUR_MACHINE.md](docs/RUNNING_IT_ON_YOUR_MACHINE.md) — local setup, Docker, admin/browsable API, headers and body inspection
+- [docs/FRONTEND.md](docs/FRONTEND.md) — frontend notes: known limitations, how AI was used, observability
 - [Database, backups and restore](docs/BACKUPS.md)
+
+## How AI was used
+
+AI assistants (Claude) were used for design research, first drafts and help with code review. The rule: AI output is a draft. It is run and tested locally, checked against docs/API.md and real API responses, and reviewed by a teammate before it is merged. The frontend lane's details, including examples of AI output that was corrected in review, are in [docs/FRONTEND.md](docs/FRONTEND.md).
