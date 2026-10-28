@@ -73,13 +73,16 @@
 
   .report-grid { display: flex; gap: 32px; flex-wrap: wrap; }
   .report-grid table { flex: 1; min-width: 280px; }
+
+  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
+  .signout:hover { background: rgba(255, 255, 255, 0.12); }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a></div>
+  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
 </header>
 
 <main class="container" id="app" hidden>
@@ -138,8 +141,9 @@
     <p class="empty" id="results-empty" hidden>No requests match these filters.</p>
   </section>
    <h2>Paid totals</h2>
-  <p class="hint">Paid requests, by the date on the request. Leave the dates empty for everything.</p>  <section class="panel">
-    <form class="filters" id="report-filters">
+  <p class="hint">Money paid out, by the date the payment completed (Kenyan days). Leave the dates empty for everything.</p>
+ <section class="panel">
+   <form class="filters" id="report-filters">
       <label>From <input type="date" name="date_from"></label>
       <label>To <input type="date" name="date_to"></label>
       <label>&nbsp;<button type="button" class="btn-secondary" id="report-clear">Clear dates</button></label>
@@ -203,6 +207,7 @@
   const money = v => Number(v).toLocaleString();
   const moneyText = v => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const who = r => r.requester_name || r.requester_username;
+  const since = r => r.submitted_at || r.created_at;   // "waiting" counts from when it went for approval, not from when the draft was created
   const newKey = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
 
   function el(tag, props, ...children) {   // builds elements with textContent, so server text never runs as HTML
@@ -252,11 +257,11 @@
       ...approvalQueue.map(r => ({ r, kind: "approve" })),
       ...requests.filter(r => r.status === "APPROVED").map(r => ({ r, kind: "pay" })),
       ...requests.filter(r => r.status === "FAILED").map(r => ({ r, kind: "retry" })),
-    ].sort((a, b) => new Date(a.r.created_at) - new Date(b.r.created_at));
+    ].sort((a, b) => new Date(since(a.r)) - new Date(since(b.r)));
     document.getElementById("queue-empty").hidden = items.length > 0;
 
     body.replaceChildren(...items.map(({ r, kind }) => {
-      const days = Math.floor((Date.now() - new Date(r.created_at)) / 864e5);
+      const days = Math.floor((Date.now() - new Date(since(r))) / 864e5);
       const waitCell = el("td", {
         className: "nowrap" + (days >= 3 ? " late" : ""),
         textContent: days < 1 ? "Today" : days + (days === 1 ? " day" : " days"),
@@ -366,8 +371,8 @@
   async function loadPaidTables() {   // only PAID requests, optionally inside a date range
     const f = reportForm.elements;
     const params = new URLSearchParams({ status: "PAID" });
-    if (f.date_from.value) params.set("date_from", f.date_from.value);
-    if (f.date_to.value) params.set("date_to", f.date_to.value);
+    if (f.date_from.value) params.set("paid_from", f.date_from.value);
+    if (f.date_to.value) params.set("paid_to", f.date_to.value);
     const res = await AUTH.apiFetch("/api/reports/summary/?" + params);
     const note = document.getElementById("report-note");
     if (!res.ok) {
@@ -495,6 +500,8 @@
   reportForm.addEventListener("change", loadPaidTables);
   reportForm.addEventListener("submit", (e) => e.preventDefault());
   document.getElementById("report-clear").addEventListener("click", () => { reportForm.reset(); loadPaidTables(); });
+  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
+
   // ---- Role check: only a FINANCE user may see this page. Convenience only; the API enforces the rules. ----
    (async () => {
     const me = await AUTH.requireRole(["FINANCE"]);

@@ -1,4 +1,5 @@
 asgiref==3.12.1
+coverage==7.17.0
 dj-database-url==3.1.2
 Django==5.2.18
 djangorestframework==3.18.3
@@ -8,3 +9,4 @@ PyJWT==2.15.1
 sqlparse==0.6.0
 tzdata==2026.5
 whitenoise==6.12.0
+gunicorn==23.0.0

@@ -194,13 +194,15 @@
   #message { background: var(--status-approved-bg); color: var(--status-approved-text); border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
   #message.error { background: var(--status-rejected-bg); color: var(--status-rejected-text); }
   .status-note { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
+  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
+  .signout:hover { background: rgba(255, 255, 255, 0.12); }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a id="back-link" href="/login/" hidden style="color:#fff;margin-left:12px">Back to my work</a></div>
+  <div class="who"><span id="who"></span> <a id="back-link" href="/login/" hidden style="color:#fff;margin-left:12px">Back to my work</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
 </header>
 
 <main class="container" id="app" hidden>
@@ -481,6 +483,7 @@
     document.getElementById("app").hidden = false;
     await Promise.all([loadChoices(), loadRequests()]);   // the real data loads inside the guard, so wrong-role users never hit the API
   })();
+  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
 </script>
 
 </body>
