@@ -6,32 +6,38 @@
 <title>ImaraWorks · Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
 <style>
   :root {
-    --navy: #1E3A5F; --amber: #C9812B;
+    --navy: #12222B;
     --btn: #A6691F; --btn-hover: #8F5A18;
     --bg: #F6F7F5; --surface: #FFFFFF; --border: #E1E4E1;
-    --text: #1F2933; --text-soft: #5A6472;
+    --text-soft: #5E666D;
     --bad-bg: #F7E7E2; --bad-text: #B3492B;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
-  .topbar { background: var(--navy); color: #fff; padding: 16px 32px; }
-  .topbar .brand { font-weight: 700; font-size: 16px; }
-  .topbar .brand span { color: var(--amber); }
-
-  .wrap { display: flex; justify-content: center; padding: 72px 24px; }
-  .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 32px; }
-  h1 { font-size: 22px; margin: 0 0 6px; }
+  .brand span { color: #B9C9CD; font-family: var(--font-body); font-size: 16px; }
+  .auth-split { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh; }
+  .auth-hero { position: relative; overflow: hidden; background-color: var(--navy); color: #F6F3EC; padding: 56px 64px; display: flex; flex-direction: column; justify-content: space-between; gap: 24px;
+    background-image: radial-gradient(circle at 88% 10%, rgba(227,167,47,0.30), transparent 42%), radial-gradient(circle at 8% 96%, rgba(31,111,107,0.50), transparent 46%); }
+  .hero-art { width: 100%; max-width: 460px; height: auto; align-self: center; margin: auto 0; }
+  .hero-title { font-size: 46px; line-height: 1.1; max-width: 520px; color: #F6F3EC; }
+  .hero-title em { color: var(--amber); font-style: normal; }
+  .auth-main { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+  @media (max-width: 860px) {
+    .auth-split { grid-template-columns: 1fr; }
+    .auth-hero { padding: 32px 24px; }
+    .hero-title { font-size: 34px; }
+    .hero-art { display: none; }
+  }
+  .card { width: 100%; max-width: 380px; }
+  h1 { font-size: 34px; margin: 0 0 6px; }
   .lede { font-size: 14px; color: var(--text-soft); margin: 0 0 24px; }
 
   label { display: block; font-size: 13px; color: var(--text-soft); margin-bottom: 6px; }
-  input { width: 100%; font-family: inherit; font-size: 14px; color: var(--text); padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; background: #fff; }
-  input:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+  input { width: 100%; margin-bottom: 16px; }
 
-  button { width: 100%; font-family: inherit; font-size: 14px; font-weight: 600; background: var(--btn); color: #fff; border: none; border-radius: 6px; padding: 11px 18px; cursor: pointer; }
-  button:hover:not(:disabled) { background: var(--btn-hover); }
+  button { width: 100%; font-family: inherit; font-weight: 600; border: none; cursor: pointer; }
   button:disabled { opacity: 0.55; cursor: not-allowed; }
 
   .error { background: var(--bad-bg); color: var(--bad-text); border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
@@ -43,11 +49,37 @@
 </head>
 <body>
 
-<header class="topbar">
+<div class="auth-split">
+<aside class="auth-hero">
   <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-</header>
 
-<main class="wrap">
+  <svg class="hero-art" viewBox="0 0 480 400" aria-hidden="true" focusable="false">
+    <circle cx="60" cy="70" r="6" fill="#1F6F6B"/>
+    <circle cx="430" cy="300" r="8" fill="#E3A72F" opacity="0.6"/>
+    <circle cx="440" cy="190" r="4" fill="#B9C9CD" opacity="0.5"/>
+    <rect x="110" y="70" width="250" height="290" rx="22" fill="#1B323D" stroke="#2C4755" stroke-width="2" transform="rotate(-6 235 215)"/>
+    <rect x="140" y="50" width="250" height="290" rx="22" fill="#F6F3EC"/>
+    <rect x="140" y="50" width="250" height="64" rx="22" fill="#E3A72F"/>
+    <rect x="140" y="92" width="250" height="22" fill="#E3A72F"/>
+    <circle cx="172" cy="82" r="10" fill="#12222B"/>
+    <rect x="194" y="76" width="110" height="12" rx="6" fill="#12222B" opacity="0.85"/>
+    <rect x="168" y="142" width="140" height="12" rx="6" fill="#D9D4C5"/>
+    <rect x="168" y="168" width="190" height="12" rx="6" fill="#E4DFD1"/>
+    <rect x="168" y="194" width="170" height="12" rx="6" fill="#E4DFD1"/>
+    <rect x="168" y="232" width="194" height="56" rx="12" fill="#12222B"/>
+    <rect x="186" y="252" width="96" height="16" rx="8" fill="#E3A72F"/>
+    <rect x="292" y="252" width="52" height="16" rx="8" fill="#2C4755"/>
+    <circle cx="372" cy="80" r="34" fill="#1F6F6B" stroke="#12222B" stroke-width="6"/>
+    <path d="M356 80 L368 92 L390 68" fill="none" stroke="#F6F3EC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <ellipse cx="92" cy="340" rx="46" ry="14" fill="#E3A72F" stroke="#12222B" stroke-width="3"/>
+    <ellipse cx="92" cy="324" rx="46" ry="14" fill="#E3A72F" stroke="#12222B" stroke-width="3"/>
+    <ellipse cx="92" cy="308" rx="46" ry="14" fill="#F0C562" stroke="#12222B" stroke-width="3"/>
+  </svg>
+
+  <h2 class="hero-title">Every payment, <em>approved</em> and accounted for.</h2>
+</aside>
+
+<main class="auth-main">
   <section class="card">
     <h1>Sign in</h1>
     <p class="lede">Use your ImaraWorks account to continue.</p>
@@ -56,17 +88,18 @@
 
     <form id="login-form">
       <label for="username">Username</label>
-      <input id="username" name="username" autocomplete="username" required autofocus>
+      <input id="username" name="username" class="input"  autocomplete="username" required autofocus>
 
       <label for="password">Password</label>
       <div class="pw-wrap">
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <input id="password" name="password" class="input"  type="password" autocomplete="current-password" required>
         <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
       </div>
-      <button type="submit" id="submit-btn">Sign in</button>
+      <button type="submit" id="submit-btn" class="btn btn-primary">Sign in</button>
     </form>
   </section>
 </main>
+</div>
 
 <script src="{% static 'frontend/auth.js' %}"></script>
 <script>
