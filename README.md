@@ -75,4 +75,10 @@ python manage.py test
 | Accounts, vendors, payment requests | A |
 | Approvals | B |
 | Payments | C |
-| Frontend | D |
+| Frontend: login, Employee, Manager and Finance pages, shared auth, health checks | D: Lewis |
+
+Frontend notes (limitations, AI use, observability): [docs/FRONTEND.md](docs/FRONTEND.md)
+
+## How AI was used
+
+AI assistants (Claude) were used for design research, first drafts and help with code review. The rule: AI output is a draft. It is run and tested locally, checked against docs/API.md and real API responses, and reviewed by a teammate before it is merged. The frontend lane's details, including examples of AI output that was corrected in review, are in [docs/FRONTEND.md](docs/FRONTEND.md).
