@@ -6,3 +6,4 @@ staticfiles/
 .env
 .coverage
 coverage.xml
+*.dump
