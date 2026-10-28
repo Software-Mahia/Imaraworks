@@ -19,6 +19,14 @@ python manage.py runserver
 
 Tests: `python manage.py test`.
 
+## Live demo
+
+- App: https://imaraworks-dwtq.onrender.com
+- Health check: https://imaraworks-dwtq.onrender.com/health/
+
+The demo runs on Render's free plan, so the first request after a quiet period can take about a minute.
+The free database expires on 2026-11-27; see [Database, backups and restore](docs/BACKUPS.md).
+
 ## Test accounts (local password: `password123`)
 
 | Username | Role |
@@ -43,6 +51,7 @@ Tests: `python manage.py test`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system architecture, settings, security, health checks, deployment/Docker, CI
 - [docs/RUNNING_IT_ON_YOUR_MACHINE.md](docs/RUNNING_IT_ON_YOUR_MACHINE.md) — local setup, Docker, admin/browsable API, headers and body inspection
 - [docs/FRONTEND.md](docs/FRONTEND.md) — frontend notes: known limitations, how AI was used, observability
+- [Database, backups and restore](docs/BACKUPS.md)
 
 ## How AI was used
 
