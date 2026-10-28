@@ -229,7 +229,7 @@
 
     queue.forEach(r => {
       const wait = waitingLabel(r.submitted_at || r.created_at);
-     const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
+      const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
 
       const requestCell = document.createElement("td");
       requestCell.append(document.createTextNode(r.vendor_name), sub(r.reason),
@@ -333,7 +333,7 @@
       submit.disabled = false;   // the same button is reused every time the dialog opens
     }
   });
-   document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
+  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
   // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
     (async () => {
     const me = await AUTH.requireRole(["MANAGER"]);
