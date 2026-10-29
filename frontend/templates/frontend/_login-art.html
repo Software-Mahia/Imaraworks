@@ -1,0 +1,384 @@
+{% comment %} Flat construction-site artwork for the sign-in page. A half-built
+lavender office with a lime tower crane, scaffolding, site hoarding, an
+excavator and traffic cones, on a pale canvas sky. Same palette as before. No
+gradients, no third-party artwork. {% endcomment %}
+<svg
+  class="art-svg"
+  viewBox="0 0 800 900"
+  preserveAspectRatio="xMidYMax slice"
+  role="img"
+  aria-label="Illustration of an office building under construction with a lime tower crane, scaffolding, an excavator and traffic cones"
+>
+  <defs>
+    <pattern
+      id="imara-hazard"
+      width="16"
+      height="16"
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(45)"
+    >
+      <rect width="16" height="16" fill="#cef65f" />
+      <rect width="8" height="16" fill="#000044" />
+    </pattern>
+    <!-- finished facade bay: white panel with an arched window -->
+    <g id="imara-bay">
+      <rect width="76" height="96" fill="#ffffff" />
+      <path d="M19 78V40a19 19 0 0 1 38 0v38Z" fill="#dddafc" />
+      <path d="M24 78V42a14 14 0 0 1 28 0v36Z" fill="#b0a9f9" />
+      <rect x="37" y="30" width="2" height="48" fill="#ffffff" opacity="0.6" />
+      <rect x="14" y="78" width="48" height="6" rx="2" fill="#dddafc" />
+    </g>
+  </defs>
+
+  <!-- sky, sun and distant hills -->
+  <rect width="800" height="900" fill="#eff2fa" />
+  <circle cx="628" cy="152" r="86" fill="#cef65f" opacity="0.55" />
+  <circle cx="628" cy="152" r="58" fill="#effdcd" />
+  <path
+    d="M0 470c90-56 168-66 248-34 74 30 132 28 206-8 82-40 168-44 346 16v220H0Z"
+    fill="#dddafc"
+  />
+  <path
+    d="M0 540c104-44 186-38 262-6 66 28 126 24 198-10 88-42 178-30 340 22v134H0Z"
+    fill="#e5e5f7"
+  />
+
+  <!-- ground -->
+  <rect y="726" width="800" height="174" fill="#dddafc" />
+  <path d="M0 726h800v24H0z" fill="#c9c8e6" />
+
+  <!-- finished neighbouring building -->
+  <rect x="632" y="392" width="86" height="336" rx="6" fill="#b0a9f9" />
+  <rect x="632" y="392" width="86" height="12" fill="#dddafc" />
+  <g fill="#eff2fa">
+    <rect x="650" y="430" width="24" height="38" rx="12" />
+    <rect x="682" y="430" width="24" height="38" rx="12" />
+    <rect x="650" y="496" width="24" height="38" rx="12" />
+    <rect x="682" y="496" width="24" height="38" rx="12" />
+    <rect x="650" y="562" width="24" height="38" rx="12" />
+    <rect x="682" y="562" width="24" height="38" rx="12" />
+  </g>
+
+  <!-- left palm, kept from the original scene -->
+  <g fill="#82f682">
+    <path d="M74 742c-8-70 2-132 30-186 4 56 0 122-12 186Z" />
+    <path d="M102 574c-34-26-52-58-58-96 28 22 50 54 66 92Z" />
+    <path d="M104 580c-8-42 2-80 28-110 0 36-6 74-20 110Z" />
+    <path d="M106 586c30-28 64-38 102-34-28 20-62 32-98 40Z" />
+    <path d="M100 594c22 18 38 44 44 78-26-18-42-44-52-74Z" />
+  </g>
+
+  <!-- building under construction: interior shadow -->
+  <rect x="134" y="294" width="374" height="432" fill="#e5e5f7" />
+
+  <!-- finished cladding, bottom up -->
+  <use href="#imara-bay" x="148" y="630" />
+  <use href="#imara-bay" x="238" y="630" />
+  <use href="#imara-bay" x="328" y="630" />
+  <use href="#imara-bay" x="418" y="630" />
+  <use href="#imara-bay" x="148" y="522" />
+  <use href="#imara-bay" x="238" y="522" />
+  <use href="#imara-bay" x="328" y="522" />
+  <use href="#imara-bay" x="418" y="522" />
+  <use href="#imara-bay" x="328" y="414" />
+  <use href="#imara-bay" x="418" y="414" />
+
+  <!-- columns -->
+  <g fill="#b0a9f9">
+    <rect x="134" y="294" width="14" height="432" />
+    <rect x="224" y="294" width="14" height="432" />
+    <rect x="314" y="294" width="14" height="432" />
+    <rect x="404" y="294" width="14" height="432" />
+    <rect x="494" y="294" width="14" height="432" />
+  </g>
+
+  <!-- floor slabs -->
+  <g>
+    <rect x="126" y="618" width="390" height="12" fill="#dddafc" />
+    <rect x="126" y="630" width="390" height="4" fill="#b0a9f9" />
+    <rect x="126" y="510" width="390" height="12" fill="#dddafc" />
+    <rect x="126" y="522" width="390" height="4" fill="#b0a9f9" />
+    <rect x="126" y="402" width="390" height="12" fill="#dddafc" />
+    <rect x="126" y="414" width="390" height="4" fill="#b0a9f9" />
+    <rect x="126" y="294" width="390" height="12" fill="#dddafc" />
+    <rect x="126" y="306" width="390" height="4" fill="#b0a9f9" />
+  </g>
+
+  <!-- rebar stubs on the top floor -->
+  <g fill="#b0a9f9">
+    <rect x="137" y="256" width="4" height="38" rx="2" />
+    <rect x="145" y="262" width="4" height="32" rx="2" />
+    <rect x="227" y="256" width="4" height="38" rx="2" />
+    <rect x="235" y="262" width="4" height="32" rx="2" />
+    <rect x="317" y="256" width="4" height="38" rx="2" />
+    <rect x="325" y="262" width="4" height="32" rx="2" />
+    <rect x="407" y="256" width="4" height="38" rx="2" />
+    <rect x="415" y="262" width="4" height="32" rx="2" />
+    <rect x="497" y="256" width="4" height="38" rx="2" />
+    <rect x="505" y="262" width="4" height="32" rx="2" />
+  </g>
+
+  <!-- scaffolding on the left -->
+  <g>
+    <rect
+      x="104"
+      y="290"
+      width="128"
+      height="104"
+      fill="#cef65f"
+      opacity="0.25"
+    />
+    <g stroke="#000044" stroke-width="3" stroke-linecap="round" opacity="0.4">
+      <path d="M108 726V270M168 726V270M228 726V270" />
+      <path
+        d="M108 618L168 510M168 618L228 510M108 510L168 402M168 510L228 402M108 402L168 294M168 402L228 294"
+      />
+      <path d="M108 584H228M108 476H228M108 368H228M108 260H228" />
+    </g>
+    <g fill="#cef65f">
+      <rect x="100" y="606" width="136" height="6" rx="2" />
+      <rect x="100" y="498" width="136" height="6" rx="2" />
+      <rect x="100" y="390" width="136" height="6" rx="2" />
+      <rect x="100" y="282" width="136" height="6" rx="2" />
+    </g>
+  </g>
+
+  <!-- finished neighbour lower wing, left of scaffold -->
+  <rect x="20" y="560" width="70" height="168" rx="6" fill="#b0a9f9" />
+  <rect x="20" y="560" width="70" height="10" fill="#dddafc" />
+  <g fill="#eff2fa">
+    <rect x="32" y="592" width="20" height="32" rx="10" />
+    <rect x="58" y="592" width="20" height="32" rx="10" />
+    <rect x="32" y="650" width="20" height="32" rx="10" />
+    <rect x="58" y="650" width="20" height="32" rx="10" />
+  </g>
+
+  <!-- tower crane -->
+  <g>
+    <!-- base -->
+    <rect x="560" y="710" width="64" height="16" rx="4" fill="#b0a9f9" />
+    <!-- mast -->
+    <rect x="576" y="150" width="4" height="570" fill="#cef65f" />
+    <rect x="600" y="150" width="4" height="570" fill="#cef65f" />
+    <path
+      d="M578 726L602 678L578 630L602 582L578 534L602 486L578 438L602 390L578 342L602 294L578 246L602 198L578 150"
+      fill="none"
+      stroke="#b0a9f9"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+    <g fill="#b0a9f9">
+      <rect x="576" y="676" width="28" height="4" />
+      <rect x="576" y="580" width="28" height="4" />
+      <rect x="576" y="484" width="28" height="4" />
+      <rect x="576" y="388" width="28" height="4" />
+      <rect x="576" y="292" width="28" height="4" />
+      <rect x="576" y="196" width="28" height="4" />
+    </g>
+    <!-- apex and tie lines -->
+    <path d="M578 122L590 70L602 122Z" fill="#cef65f" />
+    <circle cx="590" cy="64" r="6" fill="#cef65f" />
+    <path
+      d="M590 70L170 122M590 70L700 122"
+      stroke="#000044"
+      stroke-width="2"
+      opacity="0.45"
+      fill="none"
+    />
+    <!-- jib -->
+    <rect x="170" y="122" width="420" height="6" fill="#cef65f" />
+    <rect x="170" y="142" width="420" height="4" fill="#cef65f" />
+    <path
+      d="M170 144L206 128L242 144L278 128L314 144L350 128L386 144L422 128L458 144L494 128L530 144L566 128L590 144"
+      fill="none"
+      stroke="#b0a9f9"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+    <!-- counter jib and weights -->
+    <rect x="590" y="122" width="130" height="6" fill="#cef65f" />
+    <rect x="590" y="142" width="130" height="4" fill="#cef65f" />
+    <path
+      d="M590 144L626 128L662 144L698 128L720 144"
+      fill="none"
+      stroke="#b0a9f9"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+    <rect x="690" y="146" width="34" height="30" rx="4" fill="#b0a9f9" />
+    <rect x="690" y="146" width="34" height="8" rx="4" fill="#dddafc" />
+    <!-- cab -->
+    <rect x="570" y="144" width="40" height="30" rx="5" fill="#cef65f" />
+    <rect x="576" y="150" width="20" height="14" rx="3" fill="#eff2fa" />
+    <!-- trolley, cable, hook and load -->
+    <rect x="289" y="146" width="24" height="9" rx="3" fill="#000044" />
+    <path d="M301 155V214" stroke="#000044" stroke-width="2" />
+    <circle cx="301" cy="218" r="5" fill="#000044" />
+    <path
+      d="M301 222L270 238M301 222L332 238"
+      stroke="#000044"
+      stroke-width="2"
+      fill="none"
+    />
+    <rect x="264" y="238" width="74" height="10" rx="3" fill="#b0a9f9" />
+    <rect x="264" y="238" width="74" height="4" rx="2" fill="#dddafc" />
+  </g>
+
+  <!-- site hoarding along the front -->
+  <g>
+    <rect y="706" width="800" height="50" fill="#dddafc" />
+    <rect y="702" width="800" height="6" fill="#b0a9f9" />
+    <path
+      d="M50 708v36M100 708v36M150 708v36M200 708v36M250 708v36M300 708v36M500 708v36M550 708v36M600 708v36M650 708v36M700 708v36M750 708v36"
+      stroke="#b0a9f9"
+      stroke-width="2"
+    />
+    <rect y="744" width="800" height="12" fill="url(#imara-hazard)" />
+  </g>
+
+  <!-- site gate -->
+  <g>
+    <rect x="342" y="692" width="116" height="64" rx="4" fill="#cef65f" />
+    <rect x="398" y="692" width="4" height="64" fill="#000044" opacity="0.35" />
+    <g stroke="#000044" stroke-width="3" stroke-linecap="round" opacity="0.35">
+      <path
+        d="M352 702L392 746M392 702L352 746M408 702L448 746M448 702L408 746"
+      />
+    </g>
+  </g>
+
+  <!-- project sign on the hoarding -->
+  <g>
+    <rect x="168" y="636" width="6" height="74" fill="#b0a9f9" />
+    <rect x="276" y="636" width="6" height="74" fill="#b0a9f9" />
+    <rect x="150" y="628" width="150" height="82" rx="10" fill="#000044" />
+    <rect
+      x="158"
+      y="636"
+      width="134"
+      height="66"
+      rx="6"
+      fill="none"
+      stroke="#cef65f"
+      stroke-width="2"
+      opacity="0.5"
+    />
+    <text
+      x="225"
+      y="668"
+      text-anchor="middle"
+      font-family="Outfit, 'Plus Jakarta Sans', sans-serif"
+      font-size="28"
+      fill="#cef65f"
+      letter-spacing="3"
+    >
+      IMARA
+    </text>
+    <text
+      x="225"
+      y="686"
+      text-anchor="middle"
+      font-family="Outfit, 'Plus Jakarta Sans', sans-serif"
+      font-size="12"
+      fill="#ffffff"
+      letter-spacing="4"
+    >
+      WORKS
+    </text>
+    <text
+      x="225"
+      y="698"
+      text-anchor="middle"
+      font-family="Outfit, 'Plus Jakarta Sans', sans-serif"
+      font-size="8"
+      fill="#cef65f"
+      letter-spacing="2"
+    >
+      COMING SOON
+    </text>
+  </g>
+
+  <!-- foreground ground bands -->
+  <path
+    d="M0 806c120-18 238-20 360-6 132 16 268 16 440-4v104H0Z"
+    fill="#dddafc"
+  />
+  <path
+    d="M0 826c130-14 250-12 366 2 124 14 258 12 434-6v78H0Z"
+    fill="#b0a9f9"
+  />
+
+  <!-- excavator -->
+  <g>
+    <path
+      d="M694 746L636 704"
+      stroke="#000044"
+      stroke-width="12"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M694 746L636 704"
+      stroke="#cef65f"
+      stroke-width="6"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M636 704L604 764"
+      stroke="#000044"
+      stroke-width="10"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M636 704L604 764"
+      stroke="#cef65f"
+      stroke-width="4"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path d="M588 760L616 768L608 790L584 782Z" fill="#000044" />
+    <rect x="668" y="772" width="104" height="22" rx="11" fill="#000044" />
+    <g fill="#b0a9f9">
+      <circle cx="686" cy="783" r="6" />
+      <circle cx="720" cy="783" r="6" />
+      <circle cx="754" cy="783" r="6" />
+    </g>
+    <rect x="690" y="734" width="70" height="30" rx="6" fill="#cef65f" />
+    <rect x="744" y="738" width="26" height="26" rx="4" fill="#b0a9f9" />
+    <rect x="700" y="708" width="40" height="30" rx="5" fill="#cef65f" />
+    <rect x="704" y="714" width="22" height="18" rx="3" fill="#eff2fa" />
+  </g>
+
+  <!-- traffic cones -->
+  <g>
+    <path d="M238 806L247 774H253L262 806Z" fill="#cef65f" />
+    <path d="M242 792H258L255.500 800H244.500Z" fill="#ffffff" />
+    <rect x="232" y="806" width="36" height="6" rx="2" fill="#000044" />
+  </g>
+  <g transform="translate(300 6)">
+    <path d="M238 806L247 774H253L262 806Z" fill="#cef65f" />
+    <path d="M242 792H258L255.500 800H244.500Z" fill="#ffffff" />
+    <rect x="232" y="806" width="36" height="6" rx="2" fill="#000044" />
+  </g>
+
+  <!-- hard hat -->
+  <g>
+    <path d="M386 822a30 30 0 0 1 60 0Z" fill="#cef65f" />
+    <rect x="410" y="796" width="12" height="26" rx="3" fill="#effdcd" />
+    <rect x="378" y="820" width="76" height="9" rx="4.500" fill="#000044" />
+  </g>
+
+  <!-- birds -->
+  <g
+    fill="none"
+    stroke="#b0a9f9"
+    stroke-width="3"
+    stroke-linecap="round"
+    opacity="0.8"
+  >
+    <path d="M44 150c8-8 16-8 24 0 8-8 16-8 24 0" />
+    <path d="M110 104c6-6 12-6 18 0 6-6 12-6 18 0" />
+  </g>
+</svg>

@@ -1,351 +1,659 @@
-{% load static %}<!DOCTYPE html>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ImaraWorks · Awaiting Approval</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy: #1E3A5F;
-    --amber: #C9812B;
-    --amber-dark: #A6691F;
-    --bg: #F6F7F5;
-    --surface: #FFFFFF;
-    --border: #E1E4E1;
-    --text: #1F2933;
-    --text-soft: #5A6472;
-    --late-text: #8A5A15;
-    --danger: #B3492B;
-    --success-bg: #E4F1EA;
-    --success-text: #2F7D5B;
-  }
+{% extends "frontend/base.html" %}
+{% load static %}
 
-  * { box-sizing: border-box; }
+{% block title %}ImaraWorks · Approvals{% endblock %}
 
-  body {
-    margin: 0;
-    font-family: 'Inter', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
+{% block tabs %}
+<nav class="tabs" role="tablist" aria-label="Approval sections">
+  <button class="tab" id="tab-approvals" type="button" role="tab" data-tab="approvals" aria-controls="panel-approvals" aria-selected="true">
+    <svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg> Approvals
+    <span class="tab-count" data-queue-count hidden>0</span>
+  </button>
+  <button class="tab" id="tab-requests" type="button" role="tab" data-tab="requests" aria-controls="panel-requests" aria-selected="false" tabindex="-1">
+    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg> Requests
+  </button>
+</nav>
+{% endblock %}
 
-  .topbar {
-    background: var(--navy);
-    color: #fff;
-    padding: 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .topbar .brand { font-weight: 700; font-size: 16px; }
-  .topbar .brand span { color: var(--amber); }
-  .topbar .who { font-size: 13px; color: #C7D2DE; }
-
-  .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
-
-  .page-head { margin-bottom: 24px; }
-  .page-head h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
-  .page-head p { margin: 0; font-size: 14px; color: var(--text-soft); }
-
-  button {
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-    padding: 8px 14px;
-  }
-  .btn-primary { background: var(--amber); color: #fff; }
-  .btn-primary:hover { background: var(--amber-dark); }
-  .btn-secondary { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
-  .btn-reject { background: transparent; color: var(--danger); border: 1px solid var(--border); }
-  .btn-reject:hover { border-color: var(--danger); }
-
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-  }
-
-  #banner {
-    background: var(--success-bg);
-    color: var(--success-text);
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 16px;
-  }
-
-  #banner.error { background: #F7E7E2; color: var(--danger); }
-
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th {
-    text-align: left;
-    font-size: 12px;
-    color: var(--text-soft);
-    font-weight: 600;
-    padding: 0 12px 10px;
-    border-bottom: 1px solid var(--border);
-  }
-  td { padding: 14px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-
-  .sub { display: block; font-size: 12px; color: var(--text-soft); margin-top: 3px; }
-  .late { color: var(--late-text); font-weight: 600; }
-  .actions { display: flex; gap: 8px; }
-
-  #empty-state { color: var(--text-soft); font-size: 14px; padding: 24px 0; text-align: center; }
-
-  dialog {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    width: 420px;
-    max-width: 90vw;
-    font-family: inherit;
-    color: var(--text);
-  }
-  dialog::backdrop { background: rgba(31, 41, 51, 0.45); }
-  dialog h2 { font-size: 16px; margin: 0 0 6px; }
-  dialog p { font-size: 13px; color: var(--text-soft); margin: 0 0 14px; }
-  dialog textarea {
-    width: 100%;
-    min-height: 90px;
-    font-family: inherit;
-    font-size: 14px;
-    padding: 9px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    resize: vertical;
-  }
-  .dialog-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
-  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
-  .signout:hover { background: rgba(255, 255, 255, 0.12); }
-</style>
-</head>
-<body>
-
-<header class="topbar">
-  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
-</header>
-
-<main class="container" id="app" hidden>
+{% block content %}
+<section class="tab-panel" id="panel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
   <div class="page-head">
-    <h1>Awaiting your approval</h1>
-    <p>Oldest requests are listed first.</p>
+    <div>
+      <p class="eyebrow">Approvals</p>
+      <h1>Awaiting <em>you</em></h1>
+      <p class="page-sub">Oldest first. Approve or reject, with every decision written to the audit trail.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" id="refresh-btn" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+    </div>
   </div>
 
-  <div id="banner" role="status" hidden></div>
+  <div class="alert" id="banner" role="status" hidden></div>
+
+  <div class="bento">
+    <article class="kpi kpi--accent col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Needs your decision</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-queue">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-queue-note">Loading…</span></div>
+        <div class="spark spark--accent" id="spark-queue"></div>
+      </div>
+    </article>
+
+    <article class="kpi kpi--danger col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Pending value</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+      </div>
+      <div class="kpi-value"><span class="unit">KES</span><span id="kpi-pending-value">—</span></div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-pending-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--danger" id="bar-pending"><i style="width:0%"></i></div>
+      </div>
+    </article>
+
+    <article class="kpi kpi--info col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Approved</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-approved">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-approved-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--info" id="bar-approved"><i style="width:0%"></i></div>
+      </div>
+    </article>
+
+    <article class="kpi kpi--success col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Paid out</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>
+      </div>
+      <div class="kpi-value"><span class="unit">KES</span><span id="kpi-paid">—</span></div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-paid-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--success" id="bar-paid"><i style="width:0%"></i></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="bento">
+    <article class="bento-card col-8">
+      <div class="card-head">
+        <div>
+          <h3>Request volume</h3>
+          <p>Requests raised across the team, last 6 months</p>
+        </div>
+        <span class="pill pill--muted">Requests</span>
+      </div>
+      <div class="chart-box"><canvas id="volume-chart" aria-label="Request volume chart" role="img"></canvas></div>
+    </article>
+
+    <article class="bento-card col-4">
+      <div class="card-head">
+        <div>
+          <h3>Status mix</h3>
+          <p>Every request you can see</p>
+        </div>
+      </div>
+      <div class="chart-box chart-box--donut">
+        <div class="donut-wrap">
+          <canvas id="status-chart" aria-label="Requests by status" role="img"></canvas>
+          <div class="donut-center"><strong id="donut-total">0</strong><span>requests</span></div>
+        </div>
+      </div>
+      <div class="legend" id="status-legend"></div>
+    </article>
+  </div>
 
   <section class="panel">
-    <table>
-      <thead>
-        <tr>
-          <th>Request</th>
-          <th>Requested by</th>
-          <th>Amount (KES)</th>
-          <th>Waiting</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="queue-body"></tbody>
-    </table>
-    <p id="empty-state" hidden>Nothing is waiting on you. New requests will appear here.</p>
+    <div class="panel-head">
+      <div>
+        <h3>Decision queue</h3>
+        <p>Requests where you are the next approver</p>
+      </div>
+      <div class="panel-actions">
+        <span class="pill pill--warning" id="queue-count-pill">0 waiting</span>
+      </div>
+    </div>
+    <div class="request-list" id="queue-list"></div>
+    <div class="empty" id="queue-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></div>
+      <strong>You're all caught up</strong>
+      <p>Nothing is waiting on your decision. New requests will appear here.</p>
+    </div>
   </section>
-</main>
 
-<dialog id="reject-dialog">
+  <div class="bento">
+    <article class="bento-card col-7">
+      <div class="card-head">
+        <div>
+          <h3>Spend by project</h3>
+          <p>Value of requests raised, biggest first</p>
+        </div>
+        <span class="pill pill--muted">KES</span>
+      </div>
+      <div class="chart-box"><canvas id="project-chart" aria-label="Spend by project chart" role="img"></canvas></div>
+    </article>
+
+    <article class="bento-card col-5 bento-card--flush">
+      <div class="panel-head">
+        <div>
+          <h3>Recently decided</h3>
+          <p>The latest outcomes across the team</p>
+        </div>
+      </div>
+      <div class="audit-feed" id="recent-feed"></div>
+      <div class="empty" id="recent-empty" hidden>
+        <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg></div>
+        <strong>No decisions yet</strong>
+        <p>Approved and rejected requests will show up here.</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="tab-panel" id="panel-requests" role="tabpanel" aria-labelledby="tab-requests" hidden>
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Team</p>
+      <h1>All <em>requests</em></h1>
+      <p class="page-sub">Everything visible to you, with its current stage and approval history.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+    </div>
+  </div>
+
+  <section class="panel" id="requests">
+    <div class="panel-head">
+      <div>
+        <h3>Request cards</h3>
+        <p id="requests-count">Loading requests…</p>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="request-search" type="search" placeholder="Search vendor or invoice" aria-label="Search requests">
+        </label>
+        <select id="status-filter" class="select select--sm" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="PENDING_APPROVAL">Awaiting approval</option>
+          <option value="APPROVED">Approved</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="PAID">Paid</option>
+          <option value="FAILED">Failed</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div class="request-list" id="requests-list"></div>
+    <div class="empty" id="requests-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></div>
+      <strong>Nothing matches those filters</strong>
+      <p>Try a different vendor, invoice number or status.</p>
+    </div>
+  </section>
+</section>
+
+<dialog class="modal modal--sm" id="reject-dialog" aria-labelledby="reject-title">
   <form id="reject-form">
-    <h2>Reject this request</h2>
-    <p id="reject-target"></p>
-    <textarea id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
-    <div class="dialog-actions">
-      <button type="button" class="btn-secondary" id="reject-cancel">Cancel</button>
-      <button type="submit" class="btn-reject">Reject request</button>
+    <div class="modal-head">
+      <div>
+        <h2 id="reject-title">Reject this request</h2>
+        <p id="reject-target">—</p>
+      </div>
+      <button class="icon-btn modal-close" type="button" id="reject-close" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label class="field"><span>Reason <em>*</em></span>
+        <textarea class="textarea" id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn--ghost" id="reject-cancel">Cancel</button>
+      <button type="submit" class="btn btn--danger">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg> Reject request
+      </button>
     </div>
   </form>
 </dialog>
+{% endblock %}
 
-<script src="{% static 'frontend/auth.js' %}"></script>
+{% block scripts %}
 <script>
-  // ---- State and elements ----
+(() => {
+  let ME = null;
   let queue = [];
+  let requests = [];
+  let summary = null;
+
   const banner = document.getElementById("banner");
-  const tbody = document.getElementById("queue-body");
-  const emptyState = document.getElementById("empty-state");
   const LEVEL_NAME = { manager: "a manager", finance: "Finance" };
+  const METHOD = { MPESA: "M-Pesa", BANK_TRANSFER: "Bank transfer", CASH: "Cash" };
 
-  // ---- Helpers ----
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const compactAmount = (value) => SHELL.moneyCompact(value).replace(/^KES\s/, "");
+
   function showBanner(message, isError) {
-    banner.textContent = message;   // textContent: nothing from the server is ever run as HTML
-    banner.className = isError ? "error" : "";
-    banner.hidden = false;
-  }
-
-  async function readJson(res) {
-    try { return await res.json(); } catch (err) { return {}; }
-  }
-
-  function errorText(body) {
-    if (body && body.detail) return String(body.detail);
-    const parts = Object.values(body || {}).flat().map(String);
-    return parts.length ? parts.join(" ") : "Something went wrong.";
+    SHELL.alert(banner, message, isError ? "error" : "success");
   }
 
   function waitingLabel(iso) {
-    const h = Math.floor((Date.now() - new Date(iso)) / 3600000);
-    if (h < 1) return { text: "Under an hour", late: false };
-    if (h < 24) return { text: h + (h === 1 ? " hour" : " hours"), late: false };
-    const d = Math.floor(h / 24);
-    return { text: d + (d === 1 ? " day" : " days"), late: h >= 48 };
+    const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
+    if (hours < 1) return { text: "Under an hour", late: false };
+    if (hours < 24) return { text: hours + (hours === 1 ? " hour" : " hours"), late: false };
+    const days = Math.floor(hours / 24);
+    return { text: days + (days === 1 ? " day" : " days"), late: hours >= 48 };
   }
 
-  function makeButton(text, cls, onClick) {
-    const b = document.createElement("button");
-    b.className = cls;
-    b.textContent = text;
-    b.addEventListener("click", onClick);
-    return b;
+  function setBar(id, value) {
+    const bar = document.querySelector(`#${id} > i`);
+    if (bar) bar.style.width = Math.max(0, Math.min(100, value)) + "%";
   }
 
-  function sub(text) {
-    const s = document.createElement("span");
-    s.className = "sub";
-    s.textContent = text;
-    return s;
+  function setText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
   }
 
-  // ---- Render the queue ----
-  function render() {
-    tbody.replaceChildren();
-    emptyState.hidden = queue.length > 0;
+  function counts() {
+    const result = {};
+    requests.forEach((r) => { result[r.status] = (result[r.status] || 0) + 1; });
+    return result;
+  }
 
-    queue.forEach(r => {
-      const wait = waitingLabel(r.submitted_at || r.created_at);
-      const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "manager");
+  function renderKpis() {
+    const pending = requests.filter((r) => r.status === "PENDING_APPROVAL");
+    const approved = requests.filter((r) => r.status === "APPROVED");
+    const paid = requests.filter((r) => r.status === "PAID");
+    const pendingValue = SHELL.sum(pending, (r) => r.amount);
+    const paidValue = SHELL.sum(paid, (r) => r.amount);
+    const totalValue = SHELL.sum(requests, (r) => r.amount);
+    const total = requests.length;
 
-      const requestCell = document.createElement("td");
-      requestCell.append(document.createTextNode(r.vendor_name), sub(r.reason),
-                         sub(`Invoice ${r.invoice_number}, ${r.project_name}`));
+    setText("kpi-queue", SHELL.num(queue.length));
+    setText("kpi-queue-note", queue.length
+      ? (() => {
+          const oldest = queue.reduce((min, r) => Math.min(min, new Date(r.created_at).getTime()), Date.now());
+          const wait = waitingLabel(new Date(oldest).toISOString());
+          return `Oldest has waited ${wait.text.toLowerCase()}`;
+        })()
+      : "Nothing waiting on you");
+    const perMonth = (summary && summary.by_month ? summary.by_month : []).map((m) => m.count);
+    SHELL.sparkline(document.getElementById("spark-queue"), perMonth, "warning");
 
-      const requesterCell = document.createElement("td");
-      requesterCell.textContent = r.requester_name || r.requester_username;
+    const pendingEl = document.getElementById("kpi-pending-value");
+    if (pendingEl) {
+      pendingEl.textContent = compactAmount(pendingValue);
+      pendingEl.title = SHELL.moneyExact(pendingValue);
+    }
+    setText("kpi-pending-note", `${pending.length} request${pending.length === 1 ? "" : "s"} awaiting approval`);
+    setBar("bar-pending", totalValue ? (pendingValue / totalValue) * 100 : 0);
 
-      const amountCell = document.createElement("td");
-      amountCell.append(document.createTextNode(Number(r.amount).toLocaleString()));
-      if (others.length) amountCell.append(sub(others.map(l => LEVEL_NAME[l] || l).join(" and ") + " also signs off after you"));
+    setText("kpi-approved", SHELL.num(approved.length));
+    setText("kpi-approved-note", approved.length ? "Ready for Finance to pay" : "Nothing approved yet");
+    setBar("bar-approved", total ? (approved.length / total) * 100 : 0);
 
-      const waitCell = document.createElement("td");
-      waitCell.textContent = wait.text;
-      if (wait.late) waitCell.className = "late";
+    const paidEl = document.getElementById("kpi-paid");
+    if (paidEl) {
+      paidEl.textContent = compactAmount(paidValue);
+      paidEl.title = SHELL.moneyExact(paidValue);
+    }
+    setText("kpi-paid-note", `${paid.length} paid request${paid.length === 1 ? "" : "s"}`);
+    setBar("bar-paid", totalValue ? (paidValue / totalValue) * 100 : 0);
 
-      const actions = document.createElement("div");
-      actions.className = "actions";
+    setText("queue-count-pill", `${queue.length} waiting`);
+    SHELL.navCount(queue.length);
+
+    return counts();
+  }
+
+  function renderVolume() {
+    let rows = summary && summary.by_month ? summary.by_month : [];
+    if (!rows.length) {
+      const now = new Date();
+      rows = [];
+      for (let i = 5; i >= 0; i -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const count = requests.filter((r) => String(r.date || "").slice(0, 7) === key).length;
+        rows.push({ month: key, count });
+      }
+    }
+    SHELL.areaChart(
+      "volume-chart",
+      rows.map((row) => SHELL.monthLabel(row.month)),
+      rows.map((row) => row.count),
+      { label: "Requests raised", color: "#82f682", suffix: "requests" }
+    );
+  }
+
+  function renderProjectChart() {
+    const rows = ((summary && summary.by_project) || [])
+      .filter((row) => Number(row.total) > 0)
+      .slice(0, 6);
+    SHELL.barChart(
+      "project-chart",
+      rows.map((row) => row.name),
+      rows.map((row) => Number(row.total)),
+      { label: "Requested value", color: "#b0a9f9", currency: true, horizontal: true }
+    );
+  }
+
+  function renderStatus() {
+    const byStatus = counts();
+    const order = ["PENDING_APPROVAL", "SUBMITTED", "DRAFT", "APPROVED", "PROCESSING", "PAID", "FAILED", "REJECTED"];
+    const rows = order.filter((status) => byStatus[status]).map((status) => ({
+      status,
+      label: SHELL.statusInfo(status).label,
+      count: byStatus[status],
+      color: SHELL.STATUS_COLOR[status] || "#9897b4",
+    }));
+
+    SHELL.doughnutChart(
+      "status-chart",
+      rows.map((r) => r.label),
+      rows.map((r) => r.count),
+      rows.map((r) => r.color)
+    );
+    setText("donut-total", SHELL.num(requests.length));
+
+    document.getElementById("status-legend").replaceChildren(...rows.map((row) => {
+      const item = el("span", "legend-item");
+      const dot = el("i", "legend-dot");
+      dot.style.background = row.color;
+      item.append(dot, el("span", null, row.label), el("strong", null, SHELL.num(row.count)));
+      return item;
+    }));
+  }
+
+  function actionButton(label, iconName, className, onClick) {
+    const button = el("button", "btn btn--sm " + className);
+    button.type = "button";
+    button.append(SHELL.icon(iconName), document.createTextNode(label));
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function mainCell(r, noteLine) {
+    const wrap = el("div", "cell-main");
+    const avatar = el("span", "cell-avatar");
+    avatar.append(SHELL.icon("receipt"));
+    const text = el("div", "cell-text");
+    text.append(el("strong", null, r.vendor_name || "Unknown vendor"));
+    if (noteLine) text.append(el("small", null, noteLine));
+    text.append(el("small", null, `${r.requester_name || r.requester_username || "—"} · Invoice ${r.invoice_number}`));
+    wrap.append(avatar, text);
+    return wrap;
+  }
+
+  function renderQueue() {
+    const body = document.getElementById("queue-list");
+    body.replaceChildren(...queue.map((r) => {
+      const wait = waitingLabel(r.created_at);
+      const others = ((r.approval && r.approval.outstanding_levels) || []).filter((level) => level !== "manager");
+
+      const card = el("article", "request-card");
+      card.append(mainCell(r, r.reason || "No reason given"));
+
+      const amount = el("div", "request-amount");
+      const money = el("span", "amount", SHELL.money(r.amount));
+      money.title = SHELL.moneyExact(r.amount);
+      amount.append(money, el("small", null, others.length
+        ? others.map((l) => LEVEL_NAME[l] || l).join(" and ") + " also signs off"
+        : METHOD[r.payment_method] || r.payment_method || ""));
+      card.append(amount);
+
+      const state = el("div", "request-state");
+      const pill = el("span", "pill " + (wait.late ? "pill--danger" : "pill--warning"));
+      pill.append(SHELL.icon("clock"), document.createTextNode("Waiting " + wait.text.toLowerCase()));
+      state.append(pill, SHELL.stageTracker(r.status));
+      state.append(el("span", "sub", `Raised ${SHELL.relative(r.created_at)}`));
+      card.append(state);
+
+      const actions = el("div", "request-actions");
       actions.append(
-        makeButton("Approve", "btn-primary", () => approve(r, actions)),
-        makeButton("Reject", "btn-reject", () => openReject(r)),
+        actionButton("Approve", "check", "btn--primary", () => approve(r, actions)),
+        actionButton("Reject", "x", "btn--ghost", () => openReject(r)),
+        actionButton("History", "history", "btn--ghost", () => SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`)),
       );
-      const actionCell = document.createElement("td");
-      actionCell.append(actions);
+      card.append(actions);
+      return card;
+    }));
 
-      const row = document.createElement("tr");
-      row.append(requestCell, requesterCell, amountCell, waitCell, actionCell);
-      tbody.append(row);
+    document.getElementById("queue-empty").hidden = queue.length > 0;
+  }
+
+  function renderRecent() {
+    const rows = requests
+      .filter((r) => ["APPROVED", "REJECTED", "PAID", "FAILED"].includes(r.status))
+      .sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")))
+      .slice(0, 5);
+
+    const feed = document.getElementById("recent-feed");
+    feed.replaceChildren(...rows.map((r) => {
+      const info = SHELL.statusInfo(r.status);
+      const row = el("div", "audit-row");
+      const dot = el("span", "timeline-dot timeline-dot--" + info.tone);
+      dot.append(SHELL.icon(r.status === "REJECTED" || r.status === "FAILED" ? "x" : "check-circle"));
+
+      const main = el("div", "audit-main");
+      const top = el("div", "audit-top");
+      top.append(el("strong", null, r.vendor_name || "Request"), SHELL.statusPill(r.status));
+      const meta = el("div", "audit-meta");
+      meta.append(SHELL.icon("receipt"), document.createTextNode(`${SHELL.money(r.amount)} · ${r.project_name || "No project"}`));
+      const time = el("div", "audit-time");
+      time.append(el("strong", null, SHELL.relative(r.updated_at)), document.createTextNode(SHELL.shortDate(r.updated_at)));
+      main.append(top, meta);
+      row.append(dot, main, time);
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`));
+      return row;
+    }));
+
+    document.getElementById("recent-empty").hidden = rows.length > 0;
+  }
+
+  function filteredRequests() {
+    const search = document.getElementById("request-search");
+    const statusSelect = document.getElementById("status-filter");
+    const needle = search ? search.value.trim().toLowerCase() : "";
+    const status = statusSelect ? statusSelect.value : "";
+    return requests.filter((r) => {
+      if (status && r.status !== status) return false;
+      if (!needle) return true;
+      const haystack = [r.vendor_name, r.invoice_number, r.project_name, r.requester_name, r.requester_username]
+        .filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(needle);
     });
   }
 
-  // ---- Load the queue: requests waiting on MY decision, oldest first ----
+  function renderRequests() {
+    const rows = filteredRequests();
+    document.getElementById("requests-list").replaceChildren(...rows.map((r) => {
+      const card = el("article", "request-card");
+      card.append(mainCell(r, `Invoice ${r.invoice_number} · ${r.project_name || "No project"}`));
+
+      const amount = el("div", "request-amount");
+      const money = el("span", "amount", SHELL.money(r.amount));
+      money.title = SHELL.moneyExact(r.amount);
+      amount.append(money, el("small", null, SHELL.dateText(r.date)));
+      card.append(amount);
+
+      const state = el("div", "request-state");
+      state.append(SHELL.statusPill(r.status), SHELL.stageTracker(r.status));
+      const levels = (r.approval && r.approval.outstanding_levels) || [];
+      if (r.status === "PENDING_APPROVAL" && levels.length) {
+        const order = (level) => (level === "manager" ? 0 : 1);
+        state.append(el("span", "sub", "Waiting on " + levels.slice().sort((a, b) => order(a) - order(b)).map((l) => LEVEL_NAME[l] || l).join(" and ")));
+      } else {
+        state.append(el("span", "sub", `Raised ${SHELL.relative(r.created_at)}`));
+      }
+      card.append(state);
+
+      const actions = el("div", "request-actions");
+      actions.append(actionButton("History", "history", "btn--ghost", () => {
+        SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`);
+      }));
+      card.append(actions);
+      return card;
+    }));
+
+    document.getElementById("requests-empty").hidden = rows.length > 0;
+    setText("requests-count", requests.length
+      ? `${rows.length} of ${requests.length} request${requests.length === 1 ? "" : "s"}`
+      : "No requests yet");
+  }
+
+  function renderAll() {
+    renderKpis();
+    renderVolume();
+    renderProjectChart();
+    renderStatus();
+    renderQueue();
+    renderRecent();
+    renderRequests();
+  }
+
+  async function loadRequests() {
+    const res = await AUTH.apiFetch("/api/payment-requests/");
+    if (!res.ok) {
+      showBanner("Could not load the requests.", true);
+      return;
+    }
+    requests = await res.json();
+  }
+
   async function loadQueue() {
     const res = await AUTH.apiFetch("/api/approvals/queue/");
-    if (!res.ok) { showBanner("Could not load the approval queue.", true); return; }
+    if (!res.ok) {
+      showBanner("Could not load the approval queue.", true);
+      return;
+    }
     queue = await res.json();
-    render();
   }
 
-  // ---- Approve ----
-  async function approve(r, actions) {
-    const buttons = actions.querySelectorAll("button");
-    buttons.forEach(b => { b.disabled = true; });   // a second click would only earn a 409
+  async function loadSummary() {
+    const res = await AUTH.apiFetch("/api/reports/summary/");
+    if (!res.ok) { summary = null; return; }
+    summary = await res.json();
+  }
+
+  async function loadAll() {
     try {
-      const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
-      const body = await readJson(res);
+      await Promise.all([loadRequests(), loadQueue(), loadSummary()]);
+    } catch (err) {
+      showBanner("Could not reach the server. Check your connection and reload.", true);
+      return;
+    }
+    renderAll();
+  }
+
+  async function approve(request, actions) {
+    actions.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${request.id}/approve/`, { method: "POST" });
+      const body = await SHELL.readJson(res);
       if (res.ok) {
         const left = (body.approval && body.approval.outstanding_levels) || [];
-        showBanner(left.length
-          ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
-          : `Approved ${r.vendor_name}. It is ready for Finance to pay.`, false);
-        await loadQueue();
-        return;
+        showBanner(
+          left.length
+            ? `Approved ${request.vendor_name}. Now waiting on ${left.map((l) => LEVEL_NAME[l] || l).join(" and ")}.`
+            : `Approved ${request.vendor_name}. It is ready for Finance to pay.`,
+          false
+        );
+      } else {
+        showBanner(res.status === 404 ? "This request is no longer available." : SHELL.errorText(body), true);
       }
-      showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
-      if (res.status === 404 || res.status === 409) await loadQueue();   // the request changed under us: reload
-      else buttons.forEach(b => { b.disabled = false; });
     } catch (err) {
-      console.error(err);
       showBanner("Could not reach the server. Please try again.", true);
-      buttons.forEach(b => { b.disabled = false; });
     }
+    await loadAll();
   }
 
-  // ---- Reject (a reason is required) ----
   const dialog = document.getElementById("reject-dialog");
   const reasonBox = document.getElementById("reject-reason");
   let rejecting = null;
 
-  function openReject(r) {
-    rejecting = r;
-    document.getElementById("reject-target").textContent = `${r.vendor_name}, KES ${Number(r.amount).toLocaleString()}`;
+  function openReject(request) {
+    rejecting = request;
+    setText("reject-target", `${request.vendor_name}, ${SHELL.money(request.amount)}`);
     reasonBox.value = "";
     dialog.showModal();
+    window.setTimeout(() => reasonBox.focus(), 40);
   }
 
+  document.getElementById("reject-close").addEventListener("click", () => dialog.close());
   document.getElementById("reject-cancel").addEventListener("click", () => dialog.close());
 
-  document.getElementById("reject-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  document.getElementById("reject-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
     const reason = reasonBox.value.trim();
     if (!reason || !rejecting) return;
     const target = rejecting;
-    const submit = e.target.querySelector("button[type=submit]");
+    const submit = event.target.querySelector("button[type=submit]");
     submit.disabled = true;
     try {
       const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
         method: "POST",
         body: JSON.stringify({ reason }),
       });
-      const body = await readJson(res);
+      const body = await SHELL.readJson(res);
       dialog.close();
       if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
-      else showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
-      await loadQueue();
+      else showBanner(res.status === 404 ? "This request is no longer available." : SHELL.errorText(body), true);
     } catch (err) {
-      console.error(err);
       dialog.close();
       showBanner("Could not reach the server. Please try again.", true);
     } finally {
-      submit.disabled = false;   // the same button is reused every time the dialog opens
+      submit.disabled = false;
     }
+    await loadAll();
   });
-  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
-  // ---- Role check: only a MANAGER may see this page. Convenience only; the API enforces the rules. ----
-    (async () => {
+
+  document.querySelectorAll("[data-refresh]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await loadAll();
+      button.disabled = false;
+    });
+  });
+
+  const searchInput = document.getElementById("request-search");
+  const statusFilter = document.getElementById("status-filter");
+  if (searchInput) searchInput.addEventListener("input", SHELL.debounce(renderRequests, 140));
+  if (statusFilter) statusFilter.addEventListener("change", renderRequests);
+
+  document.addEventListener("shell:tab", () => {
+    if (!requests.length) return;
+    renderVolume();
+    renderProjectChart();
+    renderStatus();
+  });
+
+  (async () => {
     const me = await AUTH.requireRole(["MANAGER"]);
     if (!me) return;
-    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-    document.getElementById("who").textContent = `${name} · Manager`;
-    document.getElementById("app").hidden = false;
-    await loadQueue();   // the real data loads inside the guard, so wrong-role users never hit the API
+    ME = me;
+    SHELL.init(me);
+    await loadAll();
   })();
+})();
 </script>
-
-</body>
-</html>
+{% endblock %}

@@ -1,4 +1,4 @@
-// auth.js - shared by every role page (employee.html, manager.html, finance.html, admin.html)
+// auth.js - shared by every role page (employee.html, manager.html, finance.html, audit.html)
 // Include it once with <script src="{% static 'frontend/auth.js' %}"></script>, before each
 // page's own <script> block, then call AUTH.apiFetch(...) instead of fetch(...) everywhere.
 
@@ -6,8 +6,8 @@ const AUTH = (() => {
   const ACCESS_KEY = "imaraworks_access";
   const REFRESH_KEY = "imaraworks_refresh";
   // Where each role lands after signing in. One map, shared by the login page and every page guard.
-  // ADMIN is left out until the team decides on an admin page.
-  const HOME_BY_ROLE = { EMPLOYEE: "/employee/", MANAGER: "/manager/", FINANCE: "/finance/" };
+  // ADMIN lands on the redacted audit trail: admins never get payment data.
+  const HOME_BY_ROLE = { EMPLOYEE: "/employee/", MANAGER: "/manager/", FINANCE: "/finance/", ADMIN: "/audit/" };
   function homeFor(role) {
     return Object.hasOwn(HOME_BY_ROLE, role) ? HOME_BY_ROLE[role] : null;
   }
@@ -125,7 +125,7 @@ const AUTH = (() => {
     if (allowedRoles.includes(user.role)) return user;
     const home = homeFor(user.role);
     if (home) window.location.href = home;
-    else logout();   // ADMIN or no role: no page for them, so end the session
+    else logout();   // no role: there is no page for them, so end the session
     return null;
   }
 

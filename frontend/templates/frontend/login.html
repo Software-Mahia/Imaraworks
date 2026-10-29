@@ -1,176 +1,228 @@
-{% load static %}<!DOCTYPE html>
+{% load static %}<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ImaraWorks · Sign in</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
-<style>
-  :root {
-    --navy: #12222B;
-    --btn: #A6691F; --btn-hover: #8F5A18;
-    --bg: #F6F7F5; --surface: #FFFFFF; --border: #E1E4E1;
-    --text-soft: #5E666D;
-    --bad-bg: #F7E7E2; --bad-text: #B3492B;
-  }
-  .brand span { color: #B9C9CD; font-family: var(--font-body); font-size: 16px; }
-  .auth-split { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh; }
-  .auth-hero { position: relative; overflow: hidden; background-color: var(--navy); color: #F6F3EC; padding: 56px 64px; display: flex; flex-direction: column; justify-content: space-between; gap: 24px;
-    background-image: radial-gradient(circle at 88% 10%, rgba(227,167,47,0.30), transparent 42%), radial-gradient(circle at 8% 96%, rgba(31,111,107,0.50), transparent 46%); }
-  .hero-art { width: 100%; max-width: 460px; height: auto; align-self: center; margin: auto 0; }
-  .hero-title { font-size: 46px; line-height: 1.1; max-width: 520px; color: #F6F3EC; }
-  .hero-title em { color: var(--amber); font-style: normal; }
-  .auth-main { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
-  @media (max-width: 860px) {
-    .auth-split { grid-template-columns: 1fr; }
-    .auth-hero { padding: 32px 24px; }
-    .hero-title { font-size: 34px; }
-    .hero-art { display: none; }
-  }
-  .card { width: 100%; max-width: 380px; }
-  h1 { font-size: 34px; margin: 0 0 6px; }
-  .lede { font-size: 14px; color: var(--text-soft); margin: 0 0 24px; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ImaraWorks · Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'frontend/app.css' %}" />
+  </head>
+  <body class="login-body">
+    {% include "frontend/_icons.html" %}
 
-  label { display: block; font-size: 13px; color: var(--text-soft); margin-bottom: 6px; }
-  input { width: 100%; margin-bottom: 16px; }
+    <main class="login-shell">
+      <section class="login-visual" aria-label="ImaraWorks">
+        <a class="brand" href="/login/" aria-label="ImaraWorks">
+          <span class="brand-mark"
+            ><img
+              src="{% static 'frontend/boot.png' %}"
+              alt=""
+              width="26"
+              height="26"
+          /></span>
+          <span class="brand-text"
+            ><span>ImaraWorks</span><small>Vendor payments</small></span
+          >
+        </a>
 
-  button { width: 100%; font-family: inherit; font-weight: 600; border: none; cursor: pointer; }
-  button:disabled { opacity: 0.55; cursor: not-allowed; }
+        <div class="login-art" aria-hidden="true">
+          {% include "frontend/_login-art.html" %}
+        </div>
 
-  .error { background: var(--bad-bg); color: var(--bad-text); border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
-  .pw-wrap { position: relative; margin-bottom: 16px; }
-  .pw-wrap input { margin-bottom: 0; padding-right: 64px; }
-  .pw-wrap .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: auto; background: none; color: var(--navy); padding: 6px 8px; font-size: 12px; }
-  .pw-wrap .pw-toggle:hover:not(:disabled) { background: none; text-decoration: underline; }
-</style>
-</head>
-<body>
+        <span class="art-chip art-chip--approve">
+          <svg class="icon" aria-hidden="true">
+            <use href="#i-check-circle" />
+          </svg>
+          Manager approved
+        </span>
+        <span class="art-chip art-chip--paid">
+          <svg class="icon" aria-hidden="true"><use href="#i-wallet" /></svg>
+          KES 48,200 paid
+        </span>
+        <span class="art-chip art-chip--audit">
+          <svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg>
+          Written to the trail
+        </span>
 
-<div class="auth-split">
-<aside class="auth-hero">
-  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
+        {% comment %}
+        <div class="login-caption">
+          <h2>A calmer way to <em>settle up.</em></h2>
+          <p>
+            Raise a vendor request, follow both approvals and see the payment
+            land — with every step on the record.
+          </p>
+        </div>
+        {% endcomment %}
+      </section>
 
-  <svg class="hero-art" viewBox="0 0 480 400" aria-hidden="true" focusable="false">
-    <circle cx="60" cy="70" r="6" fill="#1F6F6B"/>
-    <circle cx="430" cy="300" r="8" fill="#E3A72F" opacity="0.6"/>
-    <circle cx="440" cy="190" r="4" fill="#B9C9CD" opacity="0.5"/>
-    <rect x="110" y="70" width="250" height="290" rx="22" fill="#1B323D" stroke="#2C4755" stroke-width="2" transform="rotate(-6 235 215)"/>
-    <rect x="140" y="50" width="250" height="290" rx="22" fill="#F6F3EC"/>
-    <rect x="140" y="50" width="250" height="64" rx="22" fill="#E3A72F"/>
-    <rect x="140" y="92" width="250" height="22" fill="#E3A72F"/>
-    <circle cx="172" cy="82" r="10" fill="#12222B"/>
-    <rect x="194" y="76" width="110" height="12" rx="6" fill="#12222B" opacity="0.85"/>
-    <rect x="168" y="142" width="140" height="12" rx="6" fill="#D9D4C5"/>
-    <rect x="168" y="168" width="190" height="12" rx="6" fill="#E4DFD1"/>
-    <rect x="168" y="194" width="170" height="12" rx="6" fill="#E4DFD1"/>
-    <rect x="168" y="232" width="194" height="56" rx="12" fill="#12222B"/>
-    <rect x="186" y="252" width="96" height="16" rx="8" fill="#E3A72F"/>
-    <rect x="292" y="252" width="52" height="16" rx="8" fill="#2C4755"/>
-    <circle cx="372" cy="80" r="34" fill="#1F6F6B" stroke="#12222B" stroke-width="6"/>
-    <path d="M356 80 L368 92 L390 68" fill="none" stroke="#F6F3EC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <ellipse cx="92" cy="340" rx="46" ry="14" fill="#E3A72F" stroke="#12222B" stroke-width="3"/>
-    <ellipse cx="92" cy="324" rx="46" ry="14" fill="#E3A72F" stroke="#12222B" stroke-width="3"/>
-    <ellipse cx="92" cy="308" rx="46" ry="14" fill="#F0C562" stroke="#12222B" stroke-width="3"/>
-  </svg>
+      <section class="login-card">
+        <p class="eyebrow">Private workspace</p>
+        <h1>Welcome <em>back.</em></h1>
+        <p class="lede">
+          Sign in with your ImaraWorks account. Your role decides where you
+          land.
+        </p>
 
-  <h2 class="hero-title">Every payment, <em>approved</em> and accounted for.</h2>
-</aside>
+        <div id="error" class="alert alert--error" role="alert" hidden></div>
 
-<main class="auth-main">
-  <section class="card">
-    <h1>Sign in</h1>
-    <p class="lede">Use your ImaraWorks account to continue.</p>
+        <form id="login-form" class="auth-form">
+          <label class="field" for="username">
+            <span>Username</span>
+            <input
+              id="username"
+              class="input"
+              name="username"
+              autocomplete="username"
+              required
+              autofocus
+            />
+          </label>
 
-    <div id="error" class="error" role="alert" hidden></div>
+          <div class="field">
+            <span><label for="password">Password</label></span>
+            <div class="pw-wrap">
+              <input
+                id="password"
+                class="input"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                id="pw-toggle"
+                class="pw-toggle"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <svg class="icon" id="pw-toggle-icon" aria-hidden="true">
+                  <use href="#i-eye" />
+                </svg>
+                <span id="pw-toggle-label">Show</span>
+              </button>
+            </div>
+          </div>
 
-    <form id="login-form">
-      <label for="username">Username</label>
-      <input id="username" name="username" class="input"  autocomplete="username" required autofocus>
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn btn--primary btn--block"
+          >
+            <span id="submit-label">Sign in</span>
+            <svg class="icon" aria-hidden="true">
+              <use href="#i-arrow-right" />
+            </svg>
+          </button>
+        </form>
 
-      <label for="password">Password</label>
-      <div class="pw-wrap">
-        <input id="password" name="password" class="input"  type="password" autocomplete="current-password" required>
-        <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
-      </div>
-      <button type="submit" id="submit-btn" class="btn btn-primary">Sign in</button>
-    </form>
-  </section>
-</main>
-</div>
+        <div class="auth-meta">
+          <svg class="icon" aria-hidden="true"><use href="#i-lock" /></svg>
+          Sessions are private to this browser. Sign out when you are done.
+        </div>
 
-<script src="{% static 'frontend/auth.js' %}"></script>
-<script>
+        <div class="auth-foot">
+          Trouble signing in? Ask an administrator to check your account and
+          role — passwords are never shown in the app.
+        </div>
+      </section>
+    </main>
 
-  const form = document.getElementById("login-form");
-  const errorBox = document.getElementById("error");
-  const submitBtn = document.getElementById("submit-btn");
+    <script src="{% static 'frontend/auth.js' %}"></script>
+    <script>
+      (() => {
+        const form = document.getElementById("login-form");
+        const errorBox = document.getElementById("error");
+        const submitBtn = document.getElementById("submit-btn");
+        const submitLabel = document.getElementById("submit-label");
 
-  function showError(message) {
-    errorBox.textContent = message;   // textContent, never innerHTML: the message is shown as plain text
-    errorBox.hidden = false;
-  }
+        function showError(message) {
+          errorBox.textContent = message; // textContent, never innerHTML: the message is shown as plain text
+          errorBox.className = "alert alert--error";
+          errorBox.hidden = false;
+        }
 
-  function setBusy(busy) {
-    submitBtn.disabled = busy;
-    submitBtn.textContent = busy ? "Signing in..." : "Sign in";
-  }
+        function setBusy(busy) {
+          submitBtn.disabled = busy;
+          submitLabel.textContent = busy ? "Signing in…" : "Sign in";
+        }
 
-  // Sends the user to their own page. Returns false if their role has no page yet.
-  function goHome(user) {
-    const home = AUTH.homeFor(user.role);
-    if (!home) return false;
-    window.location.href = home;
-    return true;
-  }
+        // Sends the user to their own page. Returns false if their role has no page yet.
+        function goHome(user) {
+          const home = AUTH.homeFor(user.role);
+          if (!home) return false;
+          window.location.href = home;
+          return true;
+        }
 
-  const pw = document.getElementById("password");
-  const pwToggle = document.getElementById("pw-toggle");
-  pwToggle.addEventListener("click", () => {
-    const show = pw.type === "password";
-    pw.type = show ? "text" : "password";
-    pwToggle.textContent = show ? "Hide" : "Show";
-    pwToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
-    pwToggle.setAttribute("aria-pressed", String(show));
-  });
+        const pw = document.getElementById("password");
+        const pwToggle = document.getElementById("pw-toggle");
+        const pwToggleLabel = document.getElementById("pw-toggle-label");
+        const pwToggleIcon = document
+          .getElementById("pw-toggle-icon")
+          .querySelector("use");
+        pwToggle.addEventListener("click", () => {
+          const show = pw.type === "password";
+          pw.type = show ? "text" : "password";
+          pwToggleLabel.textContent = show ? "Hide" : "Show";
+          pwToggleIcon.setAttribute("href", show ? "#i-eye-off" : "#i-eye");
+          pwToggle.setAttribute(
+            "aria-label",
+            show ? "Hide password" : "Show password",
+          );
+          pwToggle.setAttribute("aria-pressed", String(show));
+          pw.focus();
+        });
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    errorBox.hidden = true;
-    setBusy(true);
-    try {
-      await AUTH.login(form.elements.username.value.trim(), form.elements.password.value);
-      const user = await AUTH.getCurrentUser();
-      if (!goHome(user)) {
-        showError(user.role
-          ? "You are signed in, but there is no page for your role yet."
-          : "Your account has no role assigned yet. Ask an administrator to set it up.");
-        setBusy(false);
-      }
-      // On success the browser is already moving to the next page, so the button stays disabled.
-    } catch (err) {
-      console.error(err);
-      // fetch() throws a TypeError when the server cannot be reached at all.
-      showError(err instanceof TypeError
-        ? "Could not reach the server. Check your connection and try again."
-        : err.message);
-      form.elements.password.value = "";
-      form.elements.password.focus();
-      setBusy(false);
-    }
-  });
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          errorBox.hidden = true;
+          setBusy(true);
+          try {
+            await AUTH.login(
+              form.elements.username.value.trim(),
+              form.elements.password.value,
+            );
+            const user = await AUTH.getCurrentUser();
+            if (!goHome(user)) {
+              showError(
+                user.role
+                  ? "You are signed in, but there is no page for your role yet."
+                  : "Your account has no role assigned yet. Ask an administrator to set it up.",
+              );
+              setBusy(false);
+            }
+            // On success the browser is already moving to the next page, so the button stays disabled.
+          } catch (err) {
+            console.error(err);
+            // fetch() throws a TypeError when the server cannot be reached at all.
+            showError(
+              err instanceof TypeError
+                ? "Could not reach the server. Check your connection and try again."
+                : err.message,
+            );
+            form.elements.password.value = "";
+            form.elements.password.focus();
+            setBusy(false);
+          }
+        });
 
-  // Already signed in? Skip the form. If the stored tokens are stale, AUTH clears them and
-  // reloads this page once, and then the form shows as normal.
-  (async () => {
-    if (!AUTH.isLoggedIn()) return;
-    try {
-      goHome(await AUTH.getCurrentUser());
-    } catch (err) { /* stay on the form */ }
-  })();
-</script>
-
-</body>
+        // Already signed in? Skip the form. If the stored tokens are stale, AUTH clears them and
+        // reloads this page once, and then the form shows as normal.
+        (async () => {
+          if (!AUTH.isLoggedIn()) return;
+          try {
+            goHome(await AUTH.getCurrentUser());
+          } catch (err) {
+            /* stay on the form */
+          }
+        })();
+      })();
+    </script>
+  </body>
 </html>

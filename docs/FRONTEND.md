@@ -1,6 +1,6 @@
 # Frontend notes
 
-The frontend is plain HTML, CSS and vanilla JavaScript served by Django templates (the `frontend` app): a login page, and one page each for Employee, Manager and Finance, sharing `frontend/static/frontend/auth.js`. There is no framework and no build step.
+The frontend is plain HTML, CSS and vanilla JavaScript served by Django templates (the `frontend` app): a login page, one page each for Employee, Manager and Finance, and a read-only audit trail for Administrators, sharing `frontend/static/frontend/auth.js`. There is no framework and no build step.
 
 ## Known limitations
 
@@ -12,7 +12,7 @@ The frontend is plain HTML, CSS and vanilla JavaScript served by Django template
 - The Pay button is hidden on requests you raised yourself, so another Finance officer has to pay them. The seed data has two Finance users, faith and fiona, so each can pay the other's requests.
 - "Paid totals" filter by the date the payment completed, in Kenyan days.
 - A "Demo only" switch that makes the mock provider decline a payment appears only when the Finance page address ends in ?demo=1.
-- There is no Administrator page: an ADMIN who signs in is told there is no page for their role.
+- Administrators can read the read-only `/audit/` page. It shows the whole log with payment details redacted.
 - Frontend tests only check that each page route renders (tests/test_frontend_pages.py); the pages' JavaScript has no automated tests.
 
 ## How AI was used (frontend)

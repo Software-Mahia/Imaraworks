@@ -29,7 +29,18 @@ def seed_password(environ, *, debug):
 class Command(BaseCommand):
     help = 'Seeds sample users, vendors and projects from the case study'
 
-    def handle(self, *args, **kwargs):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--refresh',
+            action='store_true',
+            help=(
+                "Also reset the seed users' passwords to SEED_USER_PASSWORD and correct "
+                'their roles. Existing accounts are left untouched without this flag, so '
+                'changing the environment variable alone does not repair old sign-ins.'
+            ),
+        )
+
+    def handle(self, *args, refresh=False, **kwargs):
         # Decide the password before creating anything, so a refused run seeds nothing.
         password = seed_password(os.environ, debug=settings.DEBUG)
         users_data = [
@@ -48,11 +59,25 @@ class Command(BaseCommand):
             user, created = User.objects.get_or_create(
                 username=username, defaults={'first_name': first, 'last_name': last}
             )
-            if created:
+            # A plain re-run must never overwrite a working account, so the
+            # update only happens for new users or an explicit --refresh.
+            if created or refresh:
+                user.first_name = first
+                user.last_name = last
+                user.is_active = True
                 user.set_password(password)
                 user.save()
-            Profile.objects.get_or_create(user=user, defaults={'role': role})
-            self.stdout.write(f"{'Created' if created else 'Already exists'}: {username} ({role})")
+            profile, _ = Profile.objects.get_or_create(user=user, defaults={'role': role})
+            if refresh and profile.role != role:
+                profile.role = role
+                profile.save(update_fields=['role'])
+            if created:
+                status = 'Created'
+            elif refresh:
+                status = 'Refreshed'
+            else:
+                status = 'Already exists'
+            self.stdout.write(f'{status}: {username} ({role})')
 
         vendors_data = [
             ('Metro Hardware Ltd.', 'Construction materials'),

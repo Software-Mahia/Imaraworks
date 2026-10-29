@@ -1,4 +1,4 @@
-"""HTTP tests for PATCH /api/payment-requests/<id>/amount/ (docs/APPROVALS_API.md).
+"""HTTP tests for PATCH /api/payment-requests/<id>/amount/ (docs/API.md).
 
 The rules are tested in test_approval_services.py and the saving in
 test_amount_change_action.py. These check the HTTP layer: the route, body

@@ -1,8 +1,8 @@
-"""Read-only audit endpoints. See docs/APPROVALS_API.md.
+"""Read-only audit endpoints. See docs/API.md.
 
 Who can read what (decided with the team, see #2):
   - a request's history: exactly the people who can see that request
-  - the whole log:       ADMIN only, without `details` (admins see no payment data)
+  - the whole log:       ADMIN, without `details` (admins see no payment data)
 There are no write endpoints: entries are only ever created by the services
 that change a request's state.
 """
@@ -18,12 +18,14 @@ from apps.payment_requests.views import visible_requests
 from .models import AuditLog
 from .serializers import AuditEntrySerializer, AuditLogSerializer
 
+AUDIT_READER_ROLES = {Profile.ADMIN}
 
-class IsAdminRole(BasePermission):
+
+class CanReadAuditLog(BasePermission):
     message = "Only admins can read the audit log."
 
     def has_permission(self, request, view):
-        return get_role(request.user) == Profile.ADMIN
+        return get_role(request.user) in AUDIT_READER_ROLES
 
 
 class RequestHistoryView(generics.ListAPIView):
@@ -42,7 +44,7 @@ class AuditLogView(generics.ListAPIView):
     """GET /api/audit/ -- whole log, newest first, optional ?action= filter."""
 
     serializer_class = AuditLogSerializer
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, CanReadAuditLog]
 
     def get_queryset(self):
         qs = AuditLog.objects.select_related('actor').order_by('-timestamp', '-id')
