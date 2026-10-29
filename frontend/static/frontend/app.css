@@ -963,38 +963,6 @@ body.no-tabs .app-bar__tabs { display: none; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 9px; padding: 16px 26px 22px; border-top: 1px solid var(--line-soft); }
 .modal-close { width: 36px; height: 36px; }
 
-/* ==========================================================================
-   Guide
-   ========================================================================== */
-
-.guide-intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 28px;
-}
-.guide-intro h2 {
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.2vw, 44px);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.02em;
-}
-.guide-intro h2 em { font-style: normal; color: var(--coral); }
-.guide-intro p { max-width: 460px; margin-top: 9px; font-size: 12.5px; color: var(--muted); }
-
-.guide-step__index {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--primary-deep);
-  background: var(--primary-soft);
-  box-shadow: inset 0 0 0 1px rgba(99, 91, 255, 0.14);
-}
 .who-grid { display: grid; gap: 8px; }
 .who-row { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
 .who-row:last-child { border-bottom: 0; }
@@ -1048,23 +1016,6 @@ body.no-tabs .app-bar__tabs { display: none; }
 .bento-card--primary .spark span { background: currentColor; }
 
 .bento-card > .mini-bar { width: 100%; }
-
-/* Guide partial helpers (the _guide.html cards are not .guide-step) */
-
-.guide-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.guide-title .icon { width: 16px; height: 16px; color: var(--primary); }
-.bento-card--primary .guide-title .icon { color: var(--ink); }
-
-.guide-copy { margin-top: 8px; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
-.bento-card--primary .guide-copy { color: var(--ink-soft); }
 
 .request-list--flush { padding: 0; }
 .request-state .stages { margin-top: 0; }
@@ -1404,8 +1355,6 @@ body.no-tabs .app-bar__tabs { display: none; }
   .panel-actions { justify-content: flex-start; }
   .toolbar { width: 100%; }
   .search { flex: 1; min-width: 0; }
-  .guide-rule .card-head { flex-direction: column; align-items: flex-start; }
-  .guide-intro { flex-direction: column; align-items: flex-start; }
   .page-head { flex-direction: column; align-items: flex-start; }
   .login-visual { min-height: 220px; border-radius: var(--radius-lg); }
   .login-caption { display: none; }

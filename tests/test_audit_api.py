@@ -81,6 +81,14 @@ class HistoryApiTests(AuditApiTestCase):
 class AuditLogApiTests(AuditApiTestCase):
     url = '/api/audit/'
 
+    def test_admin_sees_whole_log_newest_first(self):
+        self.as_user(self.grace)
+        resp = self.client.get(self.url)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([e['action'] for e in resp.data], [AuditLog.REJECTED, AuditLog.APPROVED])
+        self.assertEqual(resp.data[0]['request'], self.req.pk)
+
     def test_reader_roles_see_no_financial_details(self):
         # Admins can't see payment data here, so the log leaves out `details`,
         # which holds amounts and rejection reasons.

@@ -536,12 +536,6 @@ const SHELL = (() => {
     activate(requested || names[0], false);
     window.addEventListener("hashchange", () => activate(window.location.hash.replace("#", ""), false));
 
-    document.querySelectorAll("[data-goto-tab]").forEach((el) => {
-      el.addEventListener("click", () => {
-        activate(el.dataset.gotoTab, true);
-      });
-    });
-
     return activate;
   }
 

@@ -27,9 +27,6 @@
       <button class="btn btn--ghost" id="refresh-btn" data-refresh type="button">
         <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
       </button>
-      <button class="btn btn--tonal" type="button" data-goto-tab="guide">
-        <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg> Payment guide
-      </button>
     </div>
   </div>
 
@@ -243,10 +240,6 @@
       <p>Try a different vendor, requester, project or status.</p>
     </div>
   </section>
-</section>
-
-<section class="tab-panel" id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
-  {% include "frontend/_guide.html" with back_tab="payments" back_label="Back to payments" %}
 </section>
 
 <dialog class="modal modal--sm" id="reject-dialog" aria-labelledby="reject-title">
