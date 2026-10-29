@@ -1,324 +1,322 @@
-{% load static %}<!DOCTYPE html>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ImaraWorks · My Requests</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy: #1E3A5F;
-    --navy-dark: #16293F;
-    --amber: #C9812B;
-    --amber-dark: #A6691F;
-    --bg: #F6F7F5;
-    --surface: #FFFFFF;
-    --border: #E1E4E1;
-    --text: #1F2933;
-    --text-soft: #5A6472;
-    --status-pending-bg: #FBF0DF;
-    --status-pending-text: #8A5A15;
-    --status-approved-bg: #E4F1EA;
-    --status-approved-text: #2F7D5B;
-    --status-rejected-bg: #F7E7E2;
-    --status-rejected-text: #B3492B;
-  }
+{% extends "frontend/base.html" %}
+{% load static %}
 
-  * { box-sizing: border-box; }
+{% block title %}ImaraWorks · My requests{% endblock %}
 
-  body {
-    margin: 0;
-    font-family: 'Inter', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
+{% block tabs %}
+<nav class="tabs" role="tablist" aria-label="Workspace sections">
+  <button class="tab" id="tab-requests" type="button" role="tab" data-tab="requests" aria-controls="panel-requests" aria-selected="true">
+    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg> Requests
+  </button>
+  <button class="tab" id="tab-payments" type="button" role="tab" data-tab="payments" aria-controls="panel-payments" aria-selected="false" tabindex="-1">
+    <svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg> Payments
+  </button>
+</nav>
+{% endblock %}
 
-  .topbar {
-    background: var(--navy);
-    color: #fff;
-    padding: 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .topbar .brand {
-    font-weight: 700;
-    font-size: 16px;
-    letter-spacing: 0.2px;
-  }
-
-  .topbar .brand span {
-    color: var(--amber);
-  }
-
-  .topbar .who {
-    font-size: 13px;
-    color: #C7D2DE;
-  }
-
-  .container {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-  }
-
-  .page-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-  }
-
-  .page-head h1 {
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  button {
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-    padding: 10px 18px;
-  }
-
-  .btn-primary {
-    background: var(--amber);
-    color: #fff;
-  }
-
-  .btn-primary:hover { background: var(--amber-dark); }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--text-soft);
-    border: 1px solid var(--border);
-  }
-
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 24px;
-  }
-
-  .panel h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0 0 16px;
-  }
-
-  .field-row {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 14px;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-soft);
-    flex: 1;
-    margin-bottom: 14px;
-  }
-
-  .field-row label { margin-bottom: 0; }
-
-  input, select, textarea {
-    font-family: inherit;
-    font-size: 14px;
-    color: var(--text);
-    padding: 9px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: #fff;
-  }
-
-  textarea { resize: vertical; min-height: 60px; }
-
-  .form-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 6px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  th {
-    text-align: left;
-    font-size: 12px;
-    color: var(--text-soft);
-    font-weight: 600;
-    padding: 0 12px 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  tr:last-child td { border-bottom: none; }
-
-  .badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 100px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .badge-pending { background: var(--status-pending-bg); color: var(--status-pending-text); }
-  .badge-approved { background: var(--status-approved-bg); color: var(--status-approved-text); }
-  .badge-rejected { background: var(--status-rejected-bg); color: var(--status-rejected-text); }
-
-  #empty-state {
-    color: var(--text-soft);
-    font-size: 14px;
-    padding: 24px 0;
-    text-align: center;
-  }
-  #message { background: var(--status-approved-bg); color: var(--status-approved-text); border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
-  #message.error { background: var(--status-rejected-bg); color: var(--status-rejected-text); }
-  .status-note { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
-  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
-  .signout:hover { background: rgba(255, 255, 255, 0.12); }
-</style>
-</head>
-<body>
-
-<header class="topbar">
-  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a id="back-link" href="/login/" hidden style="color:#fff;margin-left:12px">Back to my work</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
-</header>
-
-<main class="container" id="app" hidden>
+{% block content %}
+<section class="tab-panel" id="panel-requests" role="tabpanel" aria-labelledby="tab-requests">
   <div class="page-head">
-    <h1>My payment requests</h1>
-    <button class="btn-primary" id="toggle-form-btn">+ New request</button>
+    <div>
+      <p class="eyebrow">Workspace</p>
+      <h1>My <em>requests</em></h1>
+      <p class="page-sub">Every request you have raised, from draft to paid — with the approval chain attached.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" id="refresh-btn" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+      <button class="btn btn--primary" id="new-request-btn" type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg> New request
+      </button>
+    </div>
   </div>
 
-  <div id="message" role="status" hidden></div>
-  <section class="panel" id="new-request-panel" hidden>
-    <h2>New request</h2>
-    <form id="request-form">
-      <div class="field-row">
-        <label>Vendor
-          <select name="vendor" required><option value="">Loading...</option></select>
-        </label>
-        <label>Amount (KES)
-          <input name="amount" type="number" min="0.01" step="0.01" required>
-        </label>
+  <div class="alert" id="banner" role="status" hidden></div>
+
+  <div class="bento">
+    <article class="kpi kpi--accent col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Total requests</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg></span>
       </div>
-      <div class="field-row">
-        <label>Invoice reference
-          <input name="invoice_number" required maxlength="100">
-        </label>
-        <label>Project
-          <select name="project" required><option value="">Loading...</option></select>
-        </label>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-total-note">Loading…</span></div>
+        <div class="spark spark--accent" id="spark-total"></div>
       </div>
-      <label>Payment method
-        <select name="payment_method">
-          <option value="MPESA">M-Pesa</option>
-          <option value="BANK_TRANSFER">Bank transfer</option>
-          <option value="CASH">Cash</option>
+    </article>
+
+    <article class="kpi kpi--warning col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Awaiting approval</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-pending">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-pending-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--warning" id="bar-pending"><i style="width:0%"></i></div>
+      </div>
+    </article>
+
+    <article class="kpi kpi--info col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Approved</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-approved">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-approved-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--info" id="bar-approved"><i style="width:0%"></i></div>
+      </div>
+    </article>
+
+    <article class="kpi kpi--success col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Paid out</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>
+      </div>
+      <div class="kpi-value"><span class="unit">KES</span><span id="kpi-paid">—</span></div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-paid-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--success" id="bar-paid"><i style="width:0%"></i></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="bento">
+    <article class="bento-card col-8">
+      <div class="card-head">
+        <div>
+          <h3>Spend trend</h3>
+          <p>Value of requests you raised over the last 6 months</p>
+        </div>
+        <span class="pill pill--muted">KES</span>
+      </div>
+      <div class="chart-box"><canvas id="trend-chart" aria-label="Spend trend chart" role="img"></canvas></div>
+    </article>
+
+    <article class="bento-card col-4">
+      <div class="card-head">
+        <div>
+          <h3>Status mix</h3>
+          <p>Where your requests sit right now</p>
+        </div>
+      </div>
+      <div class="chart-box chart-box--donut">
+        <div class="donut-wrap">
+          <canvas id="status-chart" aria-label="Requests by status" role="img"></canvas>
+          <div class="donut-center"><strong id="donut-total">0</strong><span>requests</span></div>
+        </div>
+      </div>
+      <div class="legend" id="status-legend"></div>
+    </article>
+  </div>
+
+  <section class="panel section-gap" id="requests">
+    <div class="panel-head">
+      <div>
+        <h3>Your request cards</h3>
+        <p id="requests-count">Loading your requests…</p>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="request-search" type="search" placeholder="Search vendor or invoice" aria-label="Search requests">
+        </label>
+        <select id="status-filter" class="select select--sm" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="PENDING_APPROVAL">Awaiting approval</option>
+          <option value="APPROVED">Approved</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="PAID">Paid</option>
+          <option value="FAILED">Failed</option>
+          <option value="REJECTED">Rejected</option>
         </select>
-      </label>
-      <label>Reason for payment
-        <textarea name="reason" required></textarea>
-      </label>
-      <label>Supporting notes
-        <textarea name="notes"></textarea>
-      </label>
-      <div class="form-actions">
-        <button type="submit" class="btn-primary">Submit request</button>
-        <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
       </div>
-    </form>
+    </div>
+    <div class="request-list" id="requests-list"></div>
+    <div class="empty" id="empty-state" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-receipt"/></svg></div>
+      <strong>No requests here yet</strong>
+      <p>Raise your first payment request and it will show up here with its approval trail.</p>
+      <button class="btn btn--primary btn--sm" id="empty-new-btn" type="button">New request</button>
+    </div>
   </section>
+</section>
+
+<section class="tab-panel" id="panel-payments" role="tabpanel" aria-labelledby="tab-payments" hidden>
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Payments</p>
+      <h1>Money <em>movement</em></h1>
+      <p class="page-sub">What has been approved, what is in flight and what Finance has already settled.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+      <button class="btn btn--primary" data-new-request type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg> New request
+      </button>
+    </div>
+  </div>
+
+  <div class="bento">
+    <article class="kpi kpi--accent col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Paid to vendors</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>
+      </div>
+      <div class="kpi-value"><span class="unit">KES</span><span id="pay-total">—</span></div>
+      <div class="kpi-foot"><div class="kpi-meta"><span class="kpi-note" id="pay-total-note">Loading…</span></div></div>
+    </article>
+
+    <article class="kpi kpi--success col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Ready to pay</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></span>
+      </div>
+      <div class="kpi-value" id="pay-ready">—</div>
+      <div class="kpi-foot"><div class="kpi-meta"><span class="kpi-note" id="pay-ready-note">Loading…</span></div></div>
+    </article>
+
+    <article class="kpi kpi--warning col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Awaiting approval</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span>
+      </div>
+      <div class="kpi-value" id="pay-pending">—</div>
+      <div class="kpi-foot"><div class="kpi-meta"><span class="kpi-note" id="pay-pending-note">Loading…</span></div></div>
+    </article>
+
+    <article class="kpi kpi--purple col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Processing</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-activity"/></svg></span>
+      </div>
+      <div class="kpi-value" id="pay-processing">—</div>
+      <div class="kpi-foot"><div class="kpi-meta"><span class="kpi-note" id="pay-processing-note">Loading…</span></div></div>
+    </article>
+  </div>
 
   <section class="panel">
-    <table>
-      <thead>
-        <tr>
-          <th>Vendor</th>
-          <th>Amount (KES)</th>
-          <th>Invoice</th>
-          <th>Status</th>
-          <th>Date</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="requests-body"></tbody>
-    </table>
-    <p id="empty-state" hidden>No requests yet — submit your first one above.</p>
+    <div class="panel-head">
+      <div>
+        <h3>Payment history</h3>
+        <p>Approved, processing, paid and failed requests</p>
+      </div>
+      <div class="panel-actions"><span class="pill pill--muted" id="pay-list-pill">—</span></div>
+    </div>
+    <div class="request-list request-list--flush" id="pay-list"></div>
+    <div class="empty" id="pay-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></div>
+      <strong>No payments yet</strong>
+      <p>Once a request is approved, its payment will appear here.</p>
+    </div>
   </section>
-</main>
+</section>
 
-<script src="{% static 'frontend/auth.js' %}"></script>
+<section class="tab-panel" id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+  {% include "frontend/_guide.html" with back_tab="requests" back_label="Back to requests" %}
+</section>
+
+<dialog class="modal" id="new-request-dialog" aria-labelledby="new-request-title">
+  <form id="request-form">
+    <div class="modal-head">
+      <div>
+        <h2 id="new-request-title">New payment request</h2>
+        <p>It is submitted for approval as soon as you save it.</p>
+      </div>
+      <button class="icon-btn modal-close" type="button" id="dialog-close" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field-row">
+          <label class="field"><span>Vendor <em>*</em></span>
+            <select class="select" name="vendor" required><option value="">Loading…</option></select>
+          </label>
+          <label class="field"><span>Amount (KES) <em>*</em></span>
+            <input class="input" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field"><span>Invoice reference <em>*</em></span>
+            <input class="input" name="invoice_number" required maxlength="100" placeholder="e.g. INV-1042">
+          </label>
+          <label class="field"><span>Project <em>*</em></span>
+            <select class="select" name="project" required><option value="">Loading…</option></select>
+          </label>
+        </div>
+        <label class="field"><span>Payment method</span>
+          <select class="select" name="payment_method">
+            <option value="MPESA">M-Pesa</option>
+            <option value="BANK_TRANSFER">Bank transfer</option>
+            <option value="CASH">Cash</option>
+          </select>
+        </label>
+        <label class="field"><span>Reason for payment <em>*</em></span>
+          <textarea class="textarea" name="reason" required placeholder="What is this payment for?"></textarea>
+        </label>
+        <label class="field"><span>Supporting notes</span>
+          <textarea class="textarea" name="notes" placeholder="Optional context for the approver"></textarea>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn--ghost" id="cancel-btn">Cancel</button>
+      <button type="submit" class="btn btn--primary">
+        <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg> Submit request
+      </button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
 <script>
-  // ---- State: the signed-in user and their requests, loaded from the API after the role check ----
+(() => {
   let ME = null;
   let requests = [];
+  let vendorsLoaded = false;
 
   const form = document.getElementById("request-form");
-  const panel = document.getElementById("new-request-panel");
-  const messageBox = document.getElementById("message");
+  const dialog = document.getElementById("new-request-dialog");
+  const banner = document.getElementById("banner");
+  const searchInput = document.getElementById("request-search");
+  const statusFilter = document.getElementById("status-filter");
 
-  function showMessage(text, isError) {
-    messageBox.textContent = text;   // textContent: nothing from the server is ever run as HTML
-    messageBox.className = isError ? "error" : "";
-    messageBox.hidden = false;
-  }
-
-  const STATUS = {
-    DRAFT:            { label: "Draft",                cls: "badge-pending",  note: "Not sent for approval yet" },
-    SUBMITTED:        { label: "Submitted",            cls: "badge-pending",  note: "" },
-    PENDING_APPROVAL: { label: "Waiting for approval", cls: "badge-pending",  note: "" },
-    APPROVED:         { label: "Approved",             cls: "badge-approved", note: "Waiting for Finance to pay" },
-    REJECTED:         { label: "Rejected",             cls: "badge-rejected", note: "" },
-    PROCESSING:       { label: "Payment in progress",  cls: "badge-pending",  note: "" },
-    PAID:             { label: "Paid",                 cls: "badge-approved", note: "" },
-    FAILED:           { label: "Payment failed",       cls: "badge-rejected", note: "Finance will retry" },
-  };
   const LEVEL_NAME = { manager: "a manager", finance: "Finance" };
-
-  // "Waiting on a manager and Finance", from the approval block when the API sends one.
-  function waitingOn(r) {
-    if (r.status !== "PENDING_APPROVAL") return "";   // the approval block is sent for every status; only a pending request is waiting on anyone
-    const order = l => (l === "manager" ? 0 : 1);
-    const levels = ((r.approval && r.approval.outstanding_levels) || []).slice().sort((a, b) => order(a) - order(b));
-    return levels.length ? "Waiting on " + levels.map(l => LEVEL_NAME[l] || l).join(" and ") : "";
-  }
-
+  const METHOD = { MPESA: "M-Pesa", BANK_TRANSFER: "Bank transfer", CASH: "Cash" };
   const FIELD_LABELS = {
     vendor: "Vendor", project: "Project", amount: "Amount", reason: "Reason",
     invoice_number: "Invoice number", payment_method: "Payment method", date: "Date", notes: "Notes",
   };
 
-  // Turns an API error body like {"amount": ["..."]} into plain-language lines.
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  function waitingOn(r) {
+    if (r.status !== "PENDING_APPROVAL") return "";
+    const order = (level) => (level === "manager" ? 0 : 1);
+    const levels = ((r.approval && r.approval.outstanding_levels) || []).slice().sort((a, b) => order(a) - order(b));
+    return levels.length ? "Waiting on " + levels.map((level) => LEVEL_NAME[level] || level).join(" and ") : "";
+  }
+
   function describeErrors(body) {
     const lines = [];
-    for (const [field, messages] of Object.entries(body || {})) {
+    Object.entries(body || {}).forEach(([field, messages]) => {
       const list = Array.isArray(messages) ? messages : [String(messages)];
       if (field === "non_field_errors") {
-        lines.push(list.some(m => m.includes("unique set"))
+        lines.push(list.some((message) => message.includes("unique set"))
           ? "A request for this vendor and invoice number already exists. Check the invoice number."
           : list.join(" "));
       } else if (field === "detail") {
@@ -326,167 +324,409 @@
       } else {
         lines.push((FIELD_LABELS[field] || field) + ": " + list.join(" "));
       }
-    }
+    });
     return lines.length ? lines : ["Something went wrong."];
   }
 
-  async function readJson(res) {
-    try { return await res.json(); } catch (err) { return {}; }
+  function compactAmount(value) {
+    return SHELL.moneyCompact(value).replace(/^KES\s/, "");
   }
 
-  function cell(text) {
-    const td = document.createElement("td");
-    td.textContent = text;
-    return td;
+  function monthKey(dateString) {
+    return String(dateString || "").slice(0, 7);
   }
 
-  function renderRequests() {
-    const body = document.getElementById("requests-body");
-    body.replaceChildren();
-    document.getElementById("empty-state").hidden = requests.length > 0;
+  function lastSixMonths() {
+    const now = new Date();
+    const buckets = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets.push({ key, label: SHELL.monthLabel(key), count: 0, total: 0 });
+    }
+    return buckets;
+  }
 
-    requests.forEach(r => {
-      const info = STATUS[r.status] || { label: r.status, cls: "badge-pending", note: "" };
-      const row = document.createElement("tr");
-      row.append(cell(r.vendor_name), cell(Number(r.amount).toLocaleString()), cell(r.invoice_number));
+  function monthlySeries() {
+    const buckets = lastSixMonths();
+    const byKey = Object.fromEntries(buckets.map((bucket) => [bucket.key, bucket]));
+    requests.forEach((r) => {
+      const bucket = byKey[monthKey(r.date)];
+      if (!bucket) return;
+      bucket.count += 1;
+      bucket.total += Number(r.amount) || 0;
+    });
+    return buckets;
+  }
 
-      const statusCell = document.createElement("td");
-      const badge = document.createElement("span");
-      badge.className = "badge " + info.cls;
-      badge.textContent = info.label;
-      statusCell.append(badge);
-      const note = waitingOn(r) || info.note;
-      if (note) {
-        const small = document.createElement("div");
-        small.className = "status-note";
-        small.textContent = note;
-        statusCell.append(small);
-      }
+  function setBar(id, value) {
+    const bar = document.querySelector(`#${id} > i`);
+    if (bar) bar.style.width = Math.max(0, Math.min(100, value)) + "%";
+  }
 
-      const actions = document.createElement("td");
-      if (r.status === "DRAFT") {   // a draft that never got submitted can be sent from here
-        const btn = document.createElement("button");
-        btn.className = "btn-secondary";
-        btn.textContent = "Submit";
-        btn.addEventListener("click", () => submitDraft(r.id, btn));
-        actions.append(btn);
-      }
+  function setText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  }
 
-      row.append(statusCell, cell(r.date), actions);
-      body.append(row);
+  function renderKpis() {
+    const counts = {};
+    requests.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const total = requests.length;
+    const pending = counts.PENDING_APPROVAL || 0;
+    const approved = counts.APPROVED || 0;
+    const paidRequests = requests.filter((r) => r.status === "PAID");
+    const paidAmount = SHELL.sum(paidRequests, (r) => r.amount);
+    const totalAmount = SHELL.sum(requests, (r) => r.amount);
+    const series = monthlySeries();
+    const thisMonth = series[series.length - 1];
+    const drafts = counts.DRAFT || 0;
+
+    setText("kpi-total", SHELL.num(total));
+    setText("kpi-total-note", total
+      ? `${thisMonth.count} raised this month${drafts ? ` · ${drafts} draft${drafts === 1 ? "" : "s"}` : ""}`
+      : "Nothing raised yet");
+    SHELL.sparkline(document.getElementById("spark-total"), series.map((s) => s.count), "accent");
+
+    setText("kpi-pending", SHELL.num(pending));
+    setText("kpi-pending-note", total
+      ? `${Math.round((pending / total) * 100)}% of your requests`
+      : "No requests to approve");
+    setBar("bar-pending", total ? (pending / total) * 100 : 0);
+
+    setText("kpi-approved", SHELL.num(approved));
+    setText("kpi-approved-note", approved ? "Ready for Finance to pay" : "Nothing waiting to be paid");
+    setBar("bar-approved", total ? (approved / total) * 100 : 0);
+
+    const paidEl = document.getElementById("kpi-paid");
+    if (paidEl) {
+      paidEl.textContent = compactAmount(paidAmount);
+      paidEl.title = SHELL.moneyExact(paidAmount);
+    }
+    setText("kpi-paid-note", paidRequests.length
+      ? `${paidRequests.length} request${paidRequests.length === 1 ? "" : "s"} paid`
+      : "No payments yet");
+    setBar("bar-paid", totalAmount ? (paidAmount / totalAmount) * 100 : 0);
+  }
+
+  function renderPayments() {
+    const paid = requests.filter((r) => r.status === "PAID");
+    const ready = requests.filter((r) => r.status === "APPROVED");
+    const pending = requests.filter((r) => r.status === "PENDING_APPROVAL");
+    const processing = requests.filter((r) => r.status === "PROCESSING");
+    const paidAmount = SHELL.sum(paid, (r) => r.amount);
+    const projects = new Set(paid.map((r) => r.project_name).filter(Boolean));
+
+    setText("pay-total", compactAmount(paidAmount));
+    setText("pay-total-note", paid.length
+      ? `Across ${projects.size || 1} project${projects.size === 1 ? "" : "s"} · ${SHELL.moneyExact(paidAmount)}`
+      : "No payments settled yet");
+
+    setText("pay-ready", SHELL.num(ready.length));
+    setText("pay-ready-note", ready.length
+      ? `${SHELL.moneyCompact(SHELL.sum(ready, (r) => r.amount))} waiting for Finance`
+      : "Nothing fully approved");
+    setText("pay-pending", SHELL.num(pending.length));
+    setText("pay-pending-note", pending.length
+      ? `${SHELL.moneyCompact(SHELL.sum(pending, (r) => r.amount))} still in the chain`
+      : "No approvals outstanding");
+    setText("pay-processing", SHELL.num(processing.length));
+    setText("pay-processing-note", processing.length ? "Awaiting a provider result" : "Nothing in flight");
+
+    const list = requests
+      .filter((r) => ["APPROVED", "PROCESSING", "PAID", "FAILED"].includes(r.status))
+      .sort((a, b) => String(b.updated_at || b.date || "").localeCompare(String(a.updated_at || a.date || "")));
+    const box = document.getElementById("pay-list");
+    box.replaceChildren(...list.map(paymentCard));
+    document.getElementById("pay-empty").hidden = list.length > 0;
+    setText("pay-list-pill", list.length ? `${list.length} payment${list.length === 1 ? "" : "s"}` : "None yet");
+  }
+
+  function renderTrend() {
+    const series = monthlySeries();
+    SHELL.areaChart(
+      "trend-chart",
+      series.map((s) => s.label),
+      series.map((s) => s.total),
+      { label: "Requests raised", color: "#b0a9f9", currency: true }
+    );
+  }
+
+  function renderDonut() {
+    const counts = {};
+    requests.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const order = ["PENDING_APPROVAL", "SUBMITTED", "DRAFT", "APPROVED", "PROCESSING", "PAID", "FAILED", "REJECTED"];
+    const rows = order
+      .filter((status) => counts[status])
+      .map((status) => ({
+        status,
+        label: SHELL.statusInfo(status).label,
+        count: counts[status],
+        color: SHELL.STATUS_COLOR[status] || "#9897b4",
+      }));
+
+    SHELL.doughnutChart(
+      "status-chart",
+      rows.map((r) => r.label),
+      rows.map((r) => r.count),
+      rows.map((r) => r.color)
+    );
+
+    setText("donut-total", SHELL.num(requests.length));
+
+    const legend = document.getElementById("status-legend");
+    legend.replaceChildren(...rows.map((row) => {
+      const item = el("span", "legend-item");
+      const dot = el("i", "legend-dot");
+      dot.style.background = row.color;
+      const label = el("span", null, row.label);
+      const strong = el("strong", null, SHELL.num(row.count));
+      item.append(dot, label, strong);
+      return item;
+    }));
+  }
+
+  function filteredRequests() {
+    const needle = searchInput.value.trim().toLowerCase();
+    const status = statusFilter.value;
+    return requests.filter((r) => {
+      if (status && r.status !== status) return false;
+      if (!needle) return true;
+      const haystack = [r.vendor_name, r.invoice_number, r.project_name, r.requester_name, r.requester_username]
+        .filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(needle);
     });
   }
 
-  function fillSelect(select, items) {
-    select.replaceChildren(new Option("Choose...", ""));
-    items.forEach(item => select.append(new Option(item.name, item.id)));
+  function actionButton(label, iconName, className, onClick) {
+    const button = el("button", "btn btn--sm " + className);
+    button.type = "button";
+    button.append(SHELL.icon(iconName), document.createTextNode(label));
+    button.addEventListener("click", onClick);
+    return button;
   }
 
-  async function loadChoices() {
-    const [v, p] = await Promise.all([AUTH.apiFetch("/api/vendors/"), AUTH.apiFetch("/api/projects/")]);
-    if (!v.ok || !p.ok) { showMessage("Could not load vendors and projects. Reload the page to try again.", true); return; }
-    fillSelect(form.elements.vendor, await v.json());
-    fillSelect(form.elements.project, await p.json());
+  function requestMain(r) {
+    const wrap = el("div", "cell-main");
+    const avatar = el("span", "cell-avatar");
+    avatar.append(SHELL.icon("receipt"));
+    const text = el("div", "cell-text");
+    text.append(el("strong", null, r.vendor_name || "Unknown vendor"));
+    text.append(el("small", null, `Invoice ${r.invoice_number} · ${r.project_name || "No project"}`));
+    wrap.append(avatar, text);
+    return wrap;
+  }
+
+  function requestAmount(r, note) {
+    const wrap = el("div", "request-amount");
+    const amount = el("span", "amount", SHELL.money(r.amount));
+    amount.title = SHELL.moneyExact(r.amount);
+    wrap.append(amount, el("small", null, note || METHOD[r.payment_method] || r.payment_method || "—"));
+    return wrap;
+  }
+
+  function requestState(r) {
+    const wrap = el("div", "request-state");
+    wrap.append(SHELL.statusPill(r.status));
+    wrap.append(SHELL.stageTracker(r.status));
+    const note = waitingOn(r) || SHELL.statusInfo(r.status).note;
+    if (note) wrap.append(el("span", "sub", note));
+    return wrap;
+  }
+
+  function requestCard(r) {
+    const card = el("article", "request-card");
+    const actions = el("div", "request-actions");
+    actions.append(actionButton("History", "history", "btn--ghost", () => {
+      SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`);
+    }));
+    if (r.status === "DRAFT") {
+      actions.append(actionButton("Submit", "send", "btn--primary", (event) => submitDraft(r, event.currentTarget)));
+    }
+    card.append(requestMain(r), requestAmount(r), requestState(r), actions);
+    return card;
+  }
+
+  function paymentCard(r) {
+    const card = el("article", "request-card");
+    const methodNote = `${METHOD[r.payment_method] || r.payment_method || "—"} · ${SHELL.relative(r.updated_at || r.date)}`;
+    const actions = el("div", "request-actions");
+    actions.append(actionButton("History", "history", "btn--ghost", () => {
+      SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`);
+    }));
+    card.append(requestMain(r), requestAmount(r, methodNote), requestState(r), actions);
+    return card;
+  }
+
+  function renderRequests() {
+    const rows = filteredRequests();
+    const body = document.getElementById("requests-list");
+    body.replaceChildren(...rows.map(requestCard));
+
+    const empty = document.getElementById("empty-state");
+    empty.hidden = rows.length > 0;
+    const emptyTitle = empty.querySelector("strong");
+    const emptyText = empty.querySelector("p");
+    if (!requests.length) {
+      emptyTitle.textContent = "No requests here yet";
+      emptyText.textContent = "Raise your first payment request and it will show up here with its approval trail.";
+    } else {
+      emptyTitle.textContent = "Nothing matches those filters";
+      emptyText.textContent = "Try a different vendor, invoice number or status.";
+    }
+
+    setText("requests-count", requests.length
+      ? `${rows.length} of ${requests.length} request${requests.length === 1 ? "" : "s"}`
+      : "No requests yet");
+  }
+
+  function renderAll() {
+    renderKpis();
+    renderPayments();
+    renderTrend();
+    renderDonut();
+    renderRequests();
   }
 
   async function loadRequests() {
     const res = await AUTH.apiFetch("/api/payment-requests/");
-    if (!res.ok) { showMessage("Could not load your requests.", true); return; }
+    if (!res.ok) {
+      SHELL.alert(banner, "Could not load your requests. Reload the page to try again.", "error");
+      return false;
+    }
     const all = await res.json();
-    // Managers and Finance get every request from the API; this page lists only the ones they raised.
-    requests = ME.role === "EMPLOYEE" ? all : all.filter(r => r.requester === ME.id);
-    renderRequests();
+    // Managers and Finance get every request from the API; this page lists only theirs.
+    requests = ME.role === "EMPLOYEE" ? all : all.filter((r) => r.requester === ME.id);
+    SHELL.clearAlert(banner);
+    renderAll();
+    return true;
   }
 
-  async function submitDraft(id, button) {
+  function fillSelect(select, items) {
+    select.replaceChildren(new Option("Choose…", ""));
+    items.forEach((item) => select.append(new Option(item.name, item.id)));
+  }
+
+  async function loadChoices() {
+    const [vendors, projects] = await Promise.all([
+      AUTH.apiFetch("/api/vendors/"),
+      AUTH.apiFetch("/api/projects/"),
+    ]);
+    if (!vendors.ok || !projects.ok) {
+      SHELL.alert(banner, "Could not load vendors and projects. Reload the page to try again.", "error");
+      return;
+    }
+    fillSelect(form.elements.vendor, await vendors.json());
+    fillSelect(form.elements.project, await projects.json());
+    vendorsLoaded = true;
+  }
+
+  async function submitDraft(request, button) {
     button.disabled = true;
     try {
-      const res = await AUTH.apiFetch(`/api/payment-requests/${id}/submit/`, { method: "POST" });
-      const body = await readJson(res);
+      const res = await AUTH.apiFetch(`/api/payment-requests/${request.id}/submit/`, { method: "POST" });
+      const body = await SHELL.readJson(res);
       if (res.ok) {
-        requests = requests.map(r => (r.id === id ? body : r));
-        showMessage("Request submitted for approval.", false);
-        renderRequests();
+        requests = requests.map((r) => (r.id === request.id ? body : r));
+        SHELL.toast("Request submitted for approval.", "success");
+        renderAll();
       } else if (res.status === 409) {
-        showMessage("This request was already submitted. Reloading your list.", true);
+        SHELL.toast("This request was already submitted. Refreshing your list.", "warning");
         await loadRequests();
       } else {
-        showMessage(describeErrors(body).join(" "), true);
+        SHELL.alert(banner, SHELL.errorText(body), "error");
         button.disabled = false;
       }
     } catch (err) {
-      console.error(err);
-      showMessage("Could not reach the server. Please try again.", true);
+      SHELL.alert(banner, "Could not reach the server. Please try again.", "error");
       button.disabled = false;
     }
   }
 
-  // ---- Form toggle ----
-  document.getElementById("toggle-form-btn").addEventListener("click", () => { panel.hidden = !panel.hidden; });
-  document.getElementById("cancel-btn").addEventListener("click", () => { panel.hidden = true; });
+  function openDialog() {
+    SHELL.clearAlert(banner);
+    if (!vendorsLoaded) loadChoices();
+    dialog.showModal();
+    window.setTimeout(() => form.elements.vendor.focus(), 40);
+  }
 
-  // ---- Create the request, then submit it ----
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  document.querySelectorAll("#new-request-btn, [data-new-request], #empty-new-btn").forEach((button) => {
+    button.addEventListener("click", openDialog);
+  });
+  document.getElementById("dialog-close").addEventListener("click", () => dialog.close());
+  document.getElementById("cancel-btn").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();   // click the backdrop, not the form
+  });
+
+  document.querySelectorAll("[data-refresh]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await loadRequests();
+      button.disabled = false;
+    });
+  });
+
+  searchInput.addEventListener("input", SHELL.debounce(renderRequests, 140));
+  statusFilter.addEventListener("change", renderRequests);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
     const button = form.querySelector("button[type=submit]");
-    button.disabled = true;   // no double submit
-    messageBox.hidden = true;
+    button.disabled = true;
     try {
-      const f = form.elements;
+      const fields = form.elements;
       const createRes = await AUTH.apiFetch("/api/payment-requests/", {
         method: "POST",
         body: JSON.stringify({
-          vendor: Number(f.vendor.value),
-          project: Number(f.project.value),
-          amount: f.amount.value,
-          reason: f.reason.value.trim(),
-          invoice_number: f.invoice_number.value.trim(),
-          payment_method: f.payment_method.value,
-          date: new Date().toLocaleDateString("en-CA"),   // today, as YYYY-MM-DD in local time
-          notes: f.notes.value.trim(),
+          vendor: Number(fields.vendor.value),
+          project: Number(fields.project.value),
+          amount: fields.amount.value,
+          reason: fields.reason.value.trim(),
+          invoice_number: fields.invoice_number.value.trim(),
+          payment_method: fields.payment_method.value,
+          date: new Date().toLocaleDateString("en-CA"),
+          notes: fields.notes.value.trim(),
         }),
       });
-      const created = await readJson(createRes);
-      if (!createRes.ok) { showMessage(describeErrors(created).join(" "), true); return; }
+      const created = await SHELL.readJson(createRes);
+      if (!createRes.ok) {
+        SHELL.alert(banner, describeErrors(created).join(" "), "error");
+        dialog.close();
+        return;
+      }
 
       const submitRes = await AUTH.apiFetch(`/api/payment-requests/${created.id}/submit/`, { method: "POST" });
-      const submitted = await readJson(submitRes);
       if (submitRes.ok) {
-        requests.unshift(submitted);
-        showMessage("Request submitted for approval.", false);
+        SHELL.toast("Request submitted for approval.", "success");
       } else {
-        requests.unshift(created);   // it exists, as a draft
-        showMessage("Saved as a draft, but submitting failed: " + describeErrors(submitted).join(" ") +
-                    " Use the Submit button on its row to try again.", true);
+        SHELL.toast("Saved as a draft, but submitting failed. Use Submit on its card to retry.", "warning");
       }
-      renderRequests();
       form.reset();
-      panel.hidden = true;
+      dialog.close();
+      await loadRequests();
     } catch (err) {
-      showMessage("Something went wrong. Check your connection and try again.", true);
+      SHELL.alert(banner, "Something went wrong. Check your connection and try again.", "error");
+      dialog.close();
     } finally {
       button.disabled = false;
     }
   });
-  // ---- Role check: employees, managers and Finance may raise requests here. Convenience only; the API enforces the rules. ----
+
+  // Charts need a redraw when their tab becomes visible.
+  document.addEventListener("shell:tab", () => {
+    if (!requests.length) return;
+    renderTrend();
+    renderDonut();
+  });
+
   (async () => {
     const me = await AUTH.requireRole(["EMPLOYEE", "MANAGER", "FINANCE"]);
     if (!me) return;
     ME = me;
-    // wrong role or no session: the browser is already being redirected
-    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-    const roleLabel = { EMPLOYEE: "Employee", MANAGER: "Manager", FINANCE: "Finance Officer" }[me.role];
-    document.getElementById("who").textContent = `${name} · ${roleLabel}`;
-    if (me.role !== "EMPLOYEE") {   // managers and Finance can raise requests too: give them a way back
-      const back = document.getElementById("back-link");
-      back.href = AUTH.homeFor(me.role);
-      back.hidden = false;
-    }
-    document.getElementById("app").hidden = false;
-    await Promise.all([loadChoices(), loadRequests()]);   // the real data loads inside the guard, so wrong-role users never hit the API
+    SHELL.init(me);
+    await Promise.all([loadChoices(), loadRequests()]);
   })();
-  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
+})();
 </script>
-
-</body>
-</html>
+{% endblock %}

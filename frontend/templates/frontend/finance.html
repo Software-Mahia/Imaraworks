@@ -1,127 +1,219 @@
-{% load static %}<!DOCTYPE html>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ImaraWorks · Finance</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy: #1E3A5F; --amber: #C9812B; --amber-dark: #A6691F;
-    --bg: #F6F7F5; --surface: #FFFFFF; --border: #E1E4E1;
-    --text: #1F2933; --text-soft: #5A6472; --danger: #B3492B;
-    --pending-bg: #FBF0DF; --pending-text: #8A5A15;
-    --ok-bg: #E4F1EA; --ok-text: #2F7D5B;
-    --bad-bg: #F7E7E2; --bad-text: #B3492B;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
-  .topbar { background: var(--navy); color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
-  .topbar .brand { font-weight: 700; font-size: 16px; }
-  .topbar .brand span { color: var(--amber); }
-  .topbar .who { font-size: 13px; color: #C7D2DE; }
-  .container { max-width: 1040px; margin: 0 auto; padding: 40px 24px 80px; }
-  h1 { font-size: 22px; margin: 0 0 24px; }
-  h2 { font-size: 16px; margin: 32px 0 12px; }
-  .hint { font-size: 13px; color: var(--text-soft); margin: -6px 0 12px; }
+{% extends "frontend/base.html" %}
+{% load static %}
 
-  button { font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; padding: 8px 14px; }
-  button:disabled { opacity: 0.55; cursor: not-allowed; }
-  .btn-primary { background: var(--amber); color: #fff; }
-  .btn-primary:hover:not(:disabled) { background: var(--amber-dark); }
-  .btn-secondary { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
-  .btn-reject { background: #fff; color: var(--danger); border: 1px solid var(--border); }
-  .actions { display: flex; gap: 8px; }
+{% block title %}ImaraWorks · Finance{% endblock %}
 
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; }
-  .stats { display: flex; }
-  .stat { flex: 1; padding: 0 24px; border-left: 1px solid var(--border); }
-  .stat:first-child { padding-left: 0; border-left: none; }
-  .stat .num { font-size: 26px; font-weight: 700; }
-  .stat .label { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
+{% block tabs %}
+<nav class="tabs" role="tablist" aria-label="Finance sections">
+  <button class="tab" id="tab-payments" type="button" role="tab" data-tab="payments" aria-controls="panel-payments" aria-selected="true">
+    <svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg> Payments
+    <span class="tab-count" data-queue-count hidden>0</span>
+  </button>
+  <button class="tab" id="tab-requests" type="button" role="tab" data-tab="requests" aria-controls="panel-requests" aria-selected="false" tabindex="-1">
+    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg> Requests
+  </button>
+</nav>
+{% endblock %}
 
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-size: 12px; color: var(--text-soft); font-weight: 600; padding: 0 12px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  td .sub { display: block; font-size: 12px; color: var(--text-soft); margin-top: 2px; }
-  .nowrap { white-space: nowrap; }
-  .late { color: var(--pending-text); font-weight: 600; }
-  .own-note { font-size: 12px; color: var(--text-soft); }
+{% block content %}
+<section class="tab-panel" id="panel-payments" role="tabpanel" aria-labelledby="tab-payments">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Finance</p>
+      <h1>Payments <em>desk</em></h1>
+      <p class="page-sub">Second approvals, ready-to-pay requests and failed payments, oldest first.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" id="refresh-btn" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+      <button class="btn btn--tonal" type="button" data-goto-tab="guide">
+        <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg> Payment guide
+      </button>
+    </div>
+  </div>
 
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .badge-pending { background: var(--pending-bg); color: var(--pending-text); }
-  .badge-ok { background: var(--ok-bg); color: var(--ok-text); }
-  .badge-bad { background: var(--bad-bg); color: var(--bad-text); }
+  <div class="alert" id="banner" role="status" hidden></div>
 
-  .filters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-soft); }
-  input, select, textarea { font-family: inherit; font-size: 14px; color: var(--text); padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
-  .empty { color: var(--text-soft); font-size: 14px; text-align: center; padding: 20px 0 4px; margin: 0; }
+  <div class="bento">
+    <article class="kpi kpi--accent col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Paid out</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>
+      </div>
+      <div class="kpi-value"><span class="unit">KES</span><span id="kpi-paid">—</span></div>
+      <div class="kpi-foot"><div class="kpi-meta"><span class="kpi-note" id="kpi-paid-note">Loading…</span></div></div>
+    </article>
 
-  #banner { background: var(--ok-bg); color: var(--ok-text); border-radius: 8px; padding: 12px 18px; font-size: 14px; margin-bottom: 20px; }
-  #banner.error { background: var(--bad-bg); color: var(--bad-text); }
+    <article class="kpi kpi--success col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Needs your action</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-activity"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-action">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-action-note">Loading…</span></div>
+        <div class="spark spark--accent" id="spark-action"></div>
+      </div>
+    </article>
 
-  dialog { border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; max-width: 92vw; }
-  dialog::backdrop { background: rgba(31, 41, 51, 0.45); }
-  dialog h3 { font-size: 16px; margin: 0 0 6px; }
-  dialog p { font-size: 13px; color: var(--text-soft); margin: 0 0 14px; }
-  dialog textarea { width: 100%; min-height: 80px; resize: vertical; }
-  .dialog-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+    <article class="kpi kpi--warning col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Awaiting approval</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-awaiting">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-awaiting-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--warning" id="bar-awaiting"><i style="width:0%"></i></div>
+      </div>
+    </article>
 
-  .report-grid { display: flex; gap: 32px; flex-wrap: wrap; }
-  .report-grid table { flex: 1; min-width: 280px; }
+    <article class="kpi kpi--danger col-3">
+      <div class="kpi-top">
+        <span class="kpi-label">Failed payments</span>
+        <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg></span>
+      </div>
+      <div class="kpi-value" id="kpi-failed">—</div>
+      <div class="kpi-foot">
+        <div class="kpi-meta"><span class="kpi-note" id="kpi-failed-note">Loading…</span></div>
+        <div class="mini-bar mini-bar--danger" id="bar-failed"><i style="width:0%"></i></div>
+      </div>
+    </article>
+  </div>
 
-  .signout { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-left: 12px; cursor: pointer; }
-  .signout:hover { background: rgba(255, 255, 255, 0.12); }
-</style>
-</head>
-<body>
+  <div class="bento">
+    <article class="bento-card col-8">
+      <div class="card-head">
+        <div>
+          <h3>Money moved</h3>
+          <p>Value of successful payments, last 6 months</p>
+        </div>
+        <span class="pill pill--muted">KES</span>
+      </div>
+      <div class="chart-box"><canvas id="paid-trend-chart" aria-label="Paid amount trend chart" role="img"></canvas></div>
+    </article>
 
-<header class="topbar">
-  <div class="brand">ImaraWorks <span>· Vendor Payments</span></div>
-  <div class="who"><span id="who"></span> <a href="/employee/" style="color:#fff;margin-left:12px">My requests</a><button type="button" class="signout" id="logout-btn">Sign out</button></div>
-</header>
+    <article class="bento-card col-4">
+      <div class="card-head">
+        <div>
+          <h3>Status mix</h3>
+          <p>Every request on the system</p>
+        </div>
+      </div>
+      <div class="chart-box chart-box--donut">
+        <div class="donut-wrap">
+          <canvas id="status-chart" aria-label="Requests by status" role="img"></canvas>
+          <div class="donut-center"><strong id="donut-total">0</strong><span>requests</span></div>
+        </div>
+      </div>
+      <div class="legend" id="status-legend"></div>
+    </article>
+  </div>
 
-<main class="container" id="app" hidden>
-  <h1>Finance</h1>
-  <div id="banner" role="status" hidden></div>
-
-  <section class="panel">
-    <div class="stats">
-      <div class="stat"><div class="num" id="stat-paid">0</div><div class="label">KES paid in total</div></div>
-      <div class="stat"><div class="num" id="stat-awaiting">0</div><div class="label">Requests awaiting approval</div></div>
-      <div class="stat"><div class="num" id="stat-failed">0</div><div class="label">Failed payments</div></div>
+  <section class="panel section-gap" id="queue">
+    <div class="panel-head">
+      <div>
+        <h3>Needs your action</h3>
+        <p>Second approvals, payments ready to send, and failed payments to retry.</p>
+      </div>
+      <div class="panel-actions">
+        <label class="checkline" id="demo-box" hidden>
+          <input type="checkbox" id="simulate-decline"> Demo: decline next payment
+        </label>
+        <span class="pill pill--warning" id="queue-pill">0 waiting</span>
+      </div>
+    </div>
+    <div class="request-list" id="queue-list"></div>
+    <div class="empty" id="queue-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg></div>
+      <strong>Nothing needs your action</strong>
+      <p>New second approvals, approved requests and failed payments will appear here.</p>
     </div>
   </section>
 
-  <h2>Needs your action</h2>
-  <div id="demo-box" class="hint" hidden><label><input type="checkbox" id="simulate-decline"> Demo only: make the mock provider decline the next payment</label></div>
-  <p class="hint">Oldest first. Second approvals for requests above KES 50,000, payments ready to send, and failed payments to retry.</p>
-  <section class="panel">
-    <table>
-      <thead><tr><th>Request</th><th>Requested by</th><th>Amount (KES)</th><th>Waiting</th><th>Next step</th><th></th></tr></thead>
-      <tbody id="queue-body"></tbody>
-    </table>
-    <p class="empty" id="queue-empty" hidden>Nothing needs your action right now.</p>
-  </section>
-
-  <h2>All requests</h2>
-  <section class="panel">
-    <form class="filters" id="filters">
-      <label>Vendor <input name="vendor" placeholder="Any"></label>
-      <label>Requester <input name="requester" placeholder="Any"></label>
-      <label>Project
-        <select name="project"><option value="">Any</option></select>
+  <section class="panel section-gap" id="reports">
+    <div class="panel-head">
+      <div>
+        <h3>Paid totals</h3>
+        <p>Money paid out, by the date the payment completed (Kenyan days).</p>
+      </div>
+      <div class="panel-actions"><span class="pill pill--success" id="paid-scope">All time</span></div>
+    </div>
+    <form class="filters filters--3" id="report-filters">
+      <label class="field"><span>Paid from</span><input class="input input--sm" type="date" name="date_from"></label>
+      <label class="field"><span>Paid to</span><input class="input input--sm" type="date" name="date_to"></label>
+      <label class="field">
+        <button type="button" class="btn btn--ghost btn--sm" id="report-clear">Clear dates</button>
       </label>
-      <label>Status
-         <select name="status">
-          <option value="">Any</option>
+    </form>
+    <div class="panel-body">
+      <div class="stat-strip" id="paid-stats">
+        <div class="stat-chip"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><strong id="paid-total">—</strong><span>paid out</span></div>
+        <div class="stat-chip"><svg class="icon" aria-hidden="true"><use href="#i-receipt"/></svg><strong id="paid-count">—</strong><span>requests</span></div>
+        <div class="stat-chip"><svg class="icon" aria-hidden="true"><use href="#i-building"/></svg><strong id="paid-projects">—</strong><span>projects</span></div>
+        <div class="stat-chip"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><strong id="paid-vendors">—</strong><span>vendors</span></div>
+      </div>
+      <p class="empty" id="report-note" hidden></p>
+      <div class="report-grid" style="margin-top:18px">
+        <div>
+          <div class="card-head">
+            <div><h3>By project</h3><p>Biggest paid value first</p></div>
+          </div>
+          <div class="chart-box"><canvas id="paid-project-chart" aria-label="Paid totals by project" role="img"></canvas></div>
+          <div class="legend legend--flush" id="paid-project-legend"></div>
+        </div>
+        <div>
+          <div class="card-head">
+            <div><h3>By vendor</h3><p>Biggest paid value first</p></div>
+          </div>
+          <div class="chart-box"><canvas id="paid-vendor-chart" aria-label="Paid totals by vendor" role="img"></canvas></div>
+          <div class="legend legend--flush" id="paid-vendor-legend"></div>
+        </div>
+      </div>
+      <div class="empty" id="report-empty" hidden>
+        <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></div>
+        <strong>Nothing paid in this period</strong>
+        <p>Clear the dates or widen the range to see earlier payments.</p>
+      </div>
+    </div>
+  </section>
+</section>
+
+<section class="tab-panel" id="panel-requests" role="tabpanel" aria-labelledby="tab-requests" hidden>
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Ledger</p>
+      <h1>Every <em>request</em></h1>
+      <p class="page-sub">Filter by vendor, project, status, method or date. Amounts are the request value, not the paid total.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn--ghost" data-refresh type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+      </button>
+    </div>
+  </div>
+
+  <section class="panel" id="requests">
+    <div class="panel-head">
+      <div>
+        <h3>Request ledger</h3>
+        <p id="requests-count">Loading requests…</p>
+      </div>
+      <div class="panel-actions"><span class="pill pill--muted" id="results-pill">—</span></div>
+    </div>
+    <form class="filters" id="filters">
+      <label class="field"><span>Search</span>
+        <input class="input input--sm" name="q" type="search" placeholder="Vendor, requester or invoice">
+      </label>
+      <label class="field"><span>Project</span>
+        <select class="select select--sm" name="project"><option value="">Any project</option></select>
+      </label>
+      <label class="field"><span>Status</span>
+        <select class="select select--sm" name="status">
+          <option value="">Any status</option>
           <option value="DRAFT">Draft</option>
+          <option value="SUBMITTED">Submitted</option>
           <option value="PENDING_APPROVAL">Waiting for approval</option>
           <option value="APPROVED">Approved</option>
           <option value="REJECTED">Rejected</option>
@@ -130,60 +222,68 @@
           <option value="FAILED">Payment failed</option>
         </select>
       </label>
-      <label>Payment method
-      <select name="method"><option value="">Any</option><option value="MPESA">M-Pesa</option><option value="BANK_TRANSFER">Bank transfer</option><option value="CASH">Cash</option></select>      </label>
-      <label>From <input type="date" name="from"></label>
-      <label>To <input type="date" name="to"></label>
-      <label>&nbsp;<button type="reset" class="btn-secondary">Clear filters</button></label>
+      <label class="field"><span>Payment method</span>
+        <select class="select select--sm" name="method">
+          <option value="">Any method</option>
+          <option value="MPESA">M-Pesa</option>
+          <option value="BANK_TRANSFER">Bank transfer</option>
+          <option value="CASH">Cash</option>
+        </select>
+      </label>
+      <label class="field"><span>From</span><input class="input input--sm" type="date" name="from"></label>
+      <label class="field"><span>To</span><input class="input input--sm" type="date" name="to"></label>
+      <label class="field">
+        <button type="reset" class="btn btn--ghost btn--sm">Clear filters</button>
+      </label>
     </form>
-    <table>
-      <thead><tr><th>Vendor</th><th>Requested by</th><th>Project</th><th>Amount (KES)</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
-      <tbody id="results-body"></tbody>
-    </table>
-    <p class="empty" id="results-empty" hidden>No requests match these filters.</p>
-  </section>
-   <h2>Paid totals</h2>
-  <p class="hint">Money paid out, by the date the payment completed (Kenyan days). Leave the dates empty for everything.</p>
- <section class="panel">
-   <form class="filters" id="report-filters">
-      <label>From <input type="date" name="date_from"></label>
-      <label>To <input type="date" name="date_to"></label>
-      <label>&nbsp;<button type="button" class="btn-secondary" id="report-clear">Clear dates</button></label>
-    </form>
-    <p class="empty" id="report-note" hidden></p>
-    <div class="report-grid">
-      <table>
-        <thead><tr><th>Project</th><th>Requests</th><th>Paid (KES)</th></tr></thead>
-        <tbody id="paid-by-project"></tbody>
-      </table>
-      <table>
-        <thead><tr><th>Vendor</th><th>Requests</th><th>Paid (KES)</th></tr></thead>
-        <tbody id="paid-by-vendor"></tbody>
-      </table>
+    <div class="request-list request-list--flush" id="results-list"></div>
+    <div class="empty" id="results-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></div>
+      <strong>Nothing matches those filters</strong>
+      <p>Try a different vendor, requester, project or status.</p>
     </div>
-    <p class="empty" id="report-empty" hidden>Nothing has been paid in this period.</p>
   </section>
-</main>
+</section>
 
-<dialog id="reject-dialog">
+<section class="tab-panel" id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+  {% include "frontend/_guide.html" with back_tab="payments" back_label="Back to payments" %}
+</section>
+
+<dialog class="modal modal--sm" id="reject-dialog" aria-labelledby="reject-title">
   <form id="reject-form">
-    <h3>Reject this request</h3>
-    <p id="reject-target"></p>
-    <textarea id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
-    <div class="dialog-actions">
-      <button type="button" class="btn-secondary" id="reject-cancel">Cancel</button>
-      <button type="submit" class="btn-reject">Reject request</button>
+    <div class="modal-head">
+      <div>
+        <h2 id="reject-title">Reject this request</h2>
+        <p id="reject-target">—</p>
+      </div>
+      <button class="icon-btn modal-close" type="button" id="reject-close" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label class="field"><span>Reason <em>*</em></span>
+        <textarea class="textarea" id="reject-reason" placeholder="Why is this being rejected? This is recorded in the request's history." required></textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn--ghost" id="reject-cancel">Cancel</button>
+      <button type="submit" class="btn btn--danger">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg> Reject request
+      </button>
     </div>
   </form>
 </dialog>
+{% endblock %}
 
-<script src="{% static 'frontend/auth.js' %}"></script>
+{% block scripts %}
 <script>
-    // ---- State ----
+(() => {
   let ME = null;
   let requests = [];         // every request, from GET /api/payment-requests/
   let approvalQueue = [];    // requests waiting on MY approval, from GET /api/approvals/queue/
   let failReasons = {};      // request id -> reason from its latest failed payment attempt
+  let summary = null;        // GET /api/reports/summary/
+  let paidReport = null;     // GET /api/reports/summary/?status=PAID&paid_from=…&paid_to=…
   const pendingKeys = new Map();   // request id -> idempotency key of a payment whose outcome we have not seen yet
 
   const PAY_URL = id => `/api/payment-requests/${id}/pay/`;
@@ -191,137 +291,274 @@
   const filtersForm = document.getElementById("filters");
   const reportForm = document.getElementById("report-filters");
 
-  // ---- Helpers ----
   const METHOD = { MPESA: "M-Pesa", BANK_TRANSFER: "Bank transfer", CASH: "Cash" };
   const LEVEL_NAME = { manager: "a manager", finance: "Finance" };
-  const STATUS = {
-    DRAFT:            { label: "Draft",                cls: "badge-pending" },
-    SUBMITTED:        { label: "Submitted",            cls: "badge-pending" },
-    PENDING_APPROVAL: { label: "Waiting for approval", cls: "badge-pending" },
-    APPROVED:         { label: "Approved",             cls: "badge-ok" },
-    REJECTED:         { label: "Rejected",             cls: "badge-bad" },
-    PROCESSING:       { label: "Payment in progress",  cls: "badge-pending" },
-    PAID:             { label: "Paid",                 cls: "badge-ok" },
-    FAILED:           { label: "Payment failed",       cls: "badge-bad" },
+
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
   };
 
-  // Display only: amounts arrive as strings and are never added up in the browser.
-  const money = v => Number(v).toLocaleString();
-  const moneyText = v => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const who = r => r.requester_name || r.requester_username;
-  const since = r => r.submitted_at || r.created_at;   // "waiting" counts from when it went for approval, not from when the draft was created
+  const compactAmount = (value) => SHELL.moneyCompact(value).replace(/^KES\s/, "");
+  const who = (r) => r.requester_name || r.requester_username;
+  // "Waiting" counts from when it went for approval, not from when the draft was created.
+  const since = (r) => r.submitted_at || r.created_at;
   const newKey = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
 
-  function el(tag, props, ...children) {   // builds elements with textContent, so server text never runs as HTML
-    const node = document.createElement(tag);
-    Object.assign(node, props || {});
-    node.append(...children);
-    return node;
-  }
-  const sub = text => el("span", { className: "sub", textContent: text });
-  function makeButton(text, cls, onClick) {
-    const b = el("button", { className: cls, textContent: text });
-    b.addEventListener("click", onClick);
-    return b;
-  }
-
   function showBanner(message, isError) {
-    banner.textContent = message;
-    banner.className = isError ? "error" : "";
-    banner.hidden = false;
+    SHELL.alert(banner, message, isError ? "error" : "success");
   }
 
-  async function readJson(res) {
-    try { return await res.json(); } catch (err) { return {}; }
+  function setBar(id, value) {
+    const bar = document.querySelector(`#${id} > i`);
+    if (bar) bar.style.width = Math.max(0, Math.min(100, value)) + "%";
   }
 
-  function errorText(body) {
-    if (body && body.detail) return String(body.detail);
-    const parts = Object.values(body || {}).flat().map(String);
-    return parts.length ? parts.join(" ") : "Something went wrong.";
+  function setText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
   }
 
-  function statusCell(r) {
-    const info = STATUS[r.status] || { label: r.status, cls: "badge-pending" };
-    const td = el("td", {}, el("span", { className: "badge " + info.cls, textContent: info.label }));
-    const levels = (r.approval && r.approval.outstanding_levels) || [];
-    if (r.status === "PENDING_APPROVAL" && levels.length) {
-      const order = l => (l === "manager" ? 0 : 1);
-      td.append(sub("Waiting on " + levels.slice().sort((a, b) => order(a) - order(b)).map(l => LEVEL_NAME[l] || l).join(" and ")));
-    }
-    return td;
+  function actionButton(label, iconName, className, onClick) {
+    const button = el("button", "btn btn--sm " + className);
+    button.type = "button";
+    button.append(SHELL.icon(iconName), document.createTextNode(label));
+    button.addEventListener("click", onClick);
+    return button;
   }
 
-  // ---- Needs your action: approvals waiting on me, payments ready to send, failed payments to retry ----
-  function renderQueue() {
-    const body = document.getElementById("queue-body");
-    const items = [
-      ...approvalQueue.map(r => ({ r, kind: "approve" })),
-      ...requests.filter(r => r.status === "APPROVED").map(r => ({ r, kind: "pay" })),
-      ...requests.filter(r => r.status === "FAILED").map(r => ({ r, kind: "retry" })),
+  /* ------------------------------------------------------------- figures */
+
+  function queueItems() {
+    return [
+      ...approvalQueue.map((r) => ({ r, kind: "approve" })),
+      ...requests.filter((r) => r.status === "APPROVED").map((r) => ({ r, kind: "pay" })),
+      ...requests.filter((r) => r.status === "FAILED").map((r) => ({ r, kind: "retry" })),
     ].sort((a, b) => new Date(since(a.r)) - new Date(since(b.r)));
-    document.getElementById("queue-empty").hidden = items.length > 0;
+  }
 
-    body.replaceChildren(...items.map(({ r, kind }) => {
-      const days = Math.floor((Date.now() - new Date(since(r))) / 864e5);
-      const waitCell = el("td", {
-        className: "nowrap" + (days >= 3 ? " late" : ""),
-        textContent: days < 1 ? "Today" : days + (days === 1 ? " day" : " days"),
-      });
-      let next, actions;
-      if (kind === "approve") {
-        const others = ((r.approval && r.approval.outstanding_levels) || []).filter(l => l !== "finance");
-        next = el("td", { textContent: others.length ? "Your approval (a manager still has to approve)" : "Final approval" });
-        actions = el("div", { className: "actions" });
-        actions.append(
-          makeButton("Approve", "btn-primary", () => approve(r, actions)),
-          makeButton("Reject", "btn-reject", () => openReject(r)),
-        );
-      } else if (kind === "pay") {
-        next = el("td", { textContent: "Ready to pay" });
-        actions = makeButton("Pay now", "btn-primary", (e) => pay(r, e.currentTarget));
-      } else {
-        next = el("td", {}, "Payment failed", sub(failReasons[r.id] || "Unknown reason"));
-        actions = makeButton("Retry payment", "btn-primary", (e) => pay(r, e.currentTarget));
+  function renderKpis() {
+    const items = queueItems();
+    const counts = {};
+    requests.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+
+    const paid = requests.filter((r) => r.status === "PAID");
+    const paidValue = SHELL.sum(paid, (r) => r.amount);
+    const totalValue = SHELL.sum(requests, (r) => r.amount);
+    const pending = requests.filter((r) => r.status === "PENDING_APPROVAL");
+    const pendingValue = SHELL.sum(pending, (r) => r.amount);
+    const failed = counts.FAILED || 0;
+    const approvals = items.filter((i) => i.kind === "approve").length;
+    const ready = items.filter((i) => i.kind === "pay").length;
+
+    const paidEl = document.getElementById("kpi-paid");
+    if (paidEl) {
+      paidEl.textContent = compactAmount(paidValue);
+      paidEl.title = SHELL.moneyExact(paidValue);
+    }
+    setText("kpi-paid-note", paid.length
+      ? `${paid.length} request${paid.length === 1 ? "" : "s"} paid`
+      : "No payments yet");
+    setBar("bar-paid", totalValue ? (paidValue / totalValue) * 100 : 0);
+
+    setText("kpi-action", SHELL.num(items.length));
+    setText("kpi-action-note", items.length
+      ? `${approvals} approval${approvals === 1 ? "" : "s"} · ${ready} to pay${failed ? ` · ${failed} failed` : ""}`
+      : "Nothing needs you right now");
+    const series = (summary && summary.by_month ? summary.by_month : []).map((m) => m.paid_count);
+    SHELL.sparkline(document.getElementById("spark-action"), series, "accent");
+
+    setText("kpi-awaiting", SHELL.num(pending.length));
+    setText("kpi-awaiting-note", pending.length
+      ? `${SHELL.moneyCompact(pendingValue)} in the queue`
+      : "No requests waiting");
+    setBar("bar-awaiting", totalValue ? (pendingValue / totalValue) * 100 : 0);
+
+    setText("kpi-failed", SHELL.num(failed));
+    setText("kpi-failed-note", failed ? "Retry from the action queue" : "No failed payments");
+    setBar("bar-failed", requests.length ? (failed / requests.length) * 100 : 0);
+
+    setText("queue-pill", `${items.length} waiting`);
+    SHELL.navCount(items.length);
+  }
+
+  function renderTrend() {
+    let rows = summary && summary.by_month ? summary.by_month : [];
+    if (!rows.length) {
+      const now = new Date();
+      rows = [];
+      for (let i = 5; i >= 0; i -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const paid = requests.filter((r) => r.status === "PAID" && String(r.date || "").slice(0, 7) === key);
+        rows.push({ month: key, paid: SHELL.sum(paid, (r) => r.amount) });
       }
-      // Decision on #33: Finance cannot pay a request they raised themselves (the API answers 403), so don't offer the button.
-      if (kind !== "approve" && r.requester === ME.id) {
-        actions = el("span", { className: "own-note", textContent: "You raised this request, so another Finance officer has to pay it." });
-      }
-      return el("tr", {},
-        el("td", {}, r.vendor_name, sub(`Invoice ${r.invoice_number}, ${r.project_name}, ${METHOD[r.payment_method] || r.payment_method}`)),
-        el("td", { textContent: who(r) }),
-        el("td", { className: "nowrap", textContent: money(r.amount) }),
-        waitCell, next, el("td", {}, actions));
+    }
+    SHELL.areaChart(
+      "paid-trend-chart",
+      rows.map((row) => SHELL.monthLabel(row.month)),
+      rows.map((row) => Number(row.paid) || 0),
+      { label: "Paid out", color: "#82f682", currency: true }
+    );
+  }
+
+  function renderStatus() {
+    const counts = {};
+    requests.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const order = ["PENDING_APPROVAL", "SUBMITTED", "DRAFT", "APPROVED", "PROCESSING", "PAID", "FAILED", "REJECTED"];
+    const rows = order.filter((status) => counts[status]).map((status) => ({
+      status,
+      label: SHELL.statusInfo(status).label,
+      count: counts[status],
+      color: SHELL.STATUS_COLOR[status] || "#9897b4",
+    }));
+
+    SHELL.doughnutChart(
+      "status-chart",
+      rows.map((r) => r.label),
+      rows.map((r) => r.count),
+      rows.map((r) => r.color)
+    );
+    setText("donut-total", SHELL.num(requests.length));
+
+    document.getElementById("status-legend").replaceChildren(...rows.map((row) => {
+      const item = el("span", "legend-item");
+      const dot = el("i", "legend-dot");
+      dot.style.background = row.color;
+      item.append(dot, el("span", null, row.label), el("strong", null, SHELL.num(row.count)));
+      return item;
     }));
   }
 
-  // ---- All requests, filtered in the browser ----
-  function renderResults() {
-    const f = filtersForm.elements;
-    const text = name => f[name].value.trim().toLowerCase();
-    const rows = requests.filter(r =>
-        (!text("vendor") || r.vendor_name.toLowerCase().includes(text("vendor"))) &&
-        (!text("requester") || (who(r) + " " + r.requester_username).toLowerCase().includes(text("requester"))) &&
-        (!f.project.value || r.project_name === f.project.value) &&
-        (!f.status.value || r.status === f.status.value) &&
-        (!f.method.value || r.payment_method === f.method.value) &&
-        (!f.from.value || r.date >= f.from.value) &&
-        (!f.to.value || r.date <= f.to.value))
-      .sort((a, b) => b.date.localeCompare(a.date));
+  /* --------------------------------------------------------------- queue */
 
-    document.getElementById("results-body").replaceChildren(...rows.map(r => el("tr", {},
-      el("td", {}, r.vendor_name, sub(`Invoice ${r.invoice_number}`)),
-      el("td", { textContent: who(r) }),
-      el("td", { textContent: r.project_name }),
-      el("td", { className: "nowrap", textContent: money(r.amount) }),
-      el("td", { textContent: METHOD[r.payment_method] || r.payment_method }),
-      statusCell(r),
-      el("td", { className: "nowrap", textContent: r.date }))));
-    document.getElementById("results-empty").hidden = rows.length > 0;
+  function mainCell(r, noteLine) {
+    const wrap = el("div", "cell-main");
+    const avatar = el("span", "cell-avatar");
+    avatar.append(SHELL.icon("receipt"));
+    const text = el("div", "cell-text");
+    text.append(el("strong", null, r.vendor_name || "Unknown vendor"));
+    if (noteLine) text.append(el("small", null, noteLine));
+    text.append(el("small", null, `${who(r) || "—"} · Invoice ${r.invoice_number}`));
+    wrap.append(avatar, text);
+    return wrap;
   }
 
-  // ---- Loading from the API ----
+  function amountCell(r, note) {
+    const wrap = el("div", "request-amount");
+    const amount = el("span", "amount", SHELL.money(r.amount));
+    amount.title = SHELL.moneyExact(r.amount);
+    wrap.append(amount, el("small", null, note || METHOD[r.payment_method] || r.payment_method || "—"));
+    return wrap;
+  }
+
+  function renderQueue() {
+    const items = queueItems();
+    document.getElementById("queue-list").replaceChildren(...items.map(({ r, kind }) => {
+      const days = Math.floor((Date.now() - new Date(since(r)).getTime()) / 864e5);
+      const card = el("article", "request-card");
+      card.append(mainCell(r, `${r.project_name || "No project"} · ${METHOD[r.payment_method] || r.payment_method || "—"}`));
+      card.append(amountCell(r, `Raised by ${who(r) || "—"}`));
+
+      const state = el("div", "request-state");
+      let nextLabel;
+      let actions = el("div", "request-actions");
+      if (kind === "approve") {
+        const others = ((r.approval && r.approval.outstanding_levels) || []).filter((level) => level !== "finance");
+        nextLabel = others.length ? "Your approval · manager still to sign" : "Final approval";
+        state.append(el("span", "pill pill--warning", others.length ? "Second signature" : "Final signature"));
+        actions.append(
+          actionButton("Approve", "check", "btn--primary", () => approve(r, actions)),
+          actionButton("Reject", "x", "btn--ghost", () => openReject(r)),
+        );
+      } else if (kind === "pay") {
+        nextLabel = "Ready to pay";
+        state.append(el("span", "pill pill--accent", "Ready to pay"));
+        actions.append(actionButton("Pay now", "send", "btn--primary", (event) => pay(r, event.currentTarget)));
+      } else {
+        nextLabel = failReasons[r.id] || "Payment failed";
+        state.append(el("span", "pill pill--danger", "Payment failed"));
+        actions.append(actionButton("Retry", "refresh", "btn--primary", (event) => pay(r, event.currentTarget)));
+      }
+      state.append(SHELL.stageTracker(r.status));
+      state.append(el("span", "sub", `${nextLabel} · waited ${days < 1 ? "under a day" : days + (days === 1 ? " day" : " days")}`));
+      card.append(state);
+
+      // Decision on #33: Finance cannot pay a request they raised themselves (the API answers 403).
+      if (kind !== "approve" && r.requester === ME.id) {
+        actions = el("div", "request-actions");
+        actions.append(el("span", "own-note muted", "You raised this request, so another Finance officer has to pay it."));
+      }
+      actions.append(actionButton("History", "history", "btn--ghost", () => {
+        SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`);
+      }));
+      card.append(actions);
+      return card;
+    }));
+    document.getElementById("queue-empty").hidden = items.length > 0;
+  }
+
+  /* --------------------------------------------------------- all requests */
+
+  function filteredRequests() {
+    const fields = filtersForm.elements;
+    const needle = fields.q.value.trim().toLowerCase();
+    const project = fields.project.value;
+    const status = fields.status.value;
+    const method = fields.method.value;
+    const from = fields.from.value;
+    const to = fields.to.value;
+
+    return requests.filter((r) => {
+      if (project && r.project_name !== project) return false;
+      if (status && r.status !== status) return false;
+      if (method && r.payment_method !== method) return false;
+      if (from && r.date < from) return false;
+      if (to && r.date > to) return false;
+      if (!needle) return true;
+      const haystack = [r.vendor_name, r.invoice_number, r.project_name, who(r), r.requester_username]
+        .filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(needle);
+    }).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  }
+
+  function renderResults() {
+    const rows = filteredRequests();
+    document.getElementById("results-list").replaceChildren(...rows.map((r) => {
+      const card = el("article", "request-card");
+      card.append(mainCell(r, `Invoice ${r.invoice_number} · ${r.project_name || "No project"}`));
+      card.append(amountCell(r, `${METHOD[r.payment_method] || r.payment_method || "—"} · ${SHELL.dateText(r.date)}`));
+
+      const state = el("div", "request-state");
+      state.append(SHELL.statusPill(r.status), SHELL.stageTracker(r.status));
+      const levels = (r.approval && r.approval.outstanding_levels) || [];
+      if (r.status === "PENDING_APPROVAL" && levels.length) {
+        const order = (level) => (level === "manager" ? 0 : 1);
+        state.append(el("span", "sub", "Waiting on " + levels.slice().sort((a, b) => order(a) - order(b)).map((l) => LEVEL_NAME[l] || l).join(" and ")));
+      } else {
+        state.append(el("span", "sub", `Raised ${SHELL.relative(r.created_at)}`));
+      }
+      card.append(state);
+
+      const actions = el("div", "request-actions");
+      actions.append(actionButton("History", "history", "btn--ghost", () => {
+        SHELL.openHistory(r.id, `${r.vendor_name} · request #${r.id}`);
+      }));
+      card.append(actions);
+      return card;
+    }));
+
+    document.getElementById("results-empty").hidden = rows.length > 0;
+    setText("results-pill", `${rows.length} of ${requests.length}`);
+    setText("requests-count", requests.length
+      ? `Every request on the system · ${rows.length} shown`
+      : "No requests yet");
+  }
+
+  /* -------------------------------------------------------------- loading */
+
   async function loadRequests() {
     const res = await AUTH.apiFetch("/api/payment-requests/");
     if (!res.ok) { showBanner("Could not load the requests.", true); return; }
@@ -338,84 +575,134 @@
     const res = await AUTH.apiFetch("/api/payments/transactions/");
     if (!res.ok) return;
     failReasons = {};
-    (await res.json()).forEach(t => {   // newest first, so the first FAILED we meet for a request is its latest
+    (await res.json()).forEach((t) => {   // newest first, so the first FAILED we meet for a request is its latest
       if (t.status === "FAILED" && !(t.request in failReasons)) failReasons[t.request] = t.provider_reason || "";
     });
+  }
+
+  async function loadSummary() {
+    const res = await AUTH.apiFetch("/api/reports/summary/");
+    if (!res.ok) { summary = null; return; }
+    summary = await res.json();
   }
 
   async function loadProjectFilter() {
     const res = await AUTH.apiFetch("/api/projects/");
     if (!res.ok) return;
-    (await res.json()).forEach(p => filtersForm.elements.project.append(new Option(p.name, p.name)));
+    (await res.json()).forEach((p) => filtersForm.elements.project.append(new Option(p.name, p.name)));
   }
 
-  function setCards(paid, awaiting, failed) {
-    document.getElementById("stat-paid").textContent = paid;
-    document.getElementById("stat-awaiting").textContent = awaiting;
-    document.getElementById("stat-failed").textContent = failed;
+  function renderPaidLegend(id, rows, color) {
+    const box = document.getElementById(id);
+    box.replaceChildren(...rows.map((row) => {
+      const item = el("span", "legend-item");
+      const dot = el("i", "legend-dot");
+      dot.style.background = color || "#b0a9f9";
+      item.append(dot, el("span", null, row.name), el("strong", null, SHELL.money(row.total)));
+      return item;
+    }));
   }
 
-  async function loadCards() {   // the plain summary: all requests, no filters
-    const res = await AUTH.apiFetch("/api/reports/summary/");
-    if (!res.ok) { setCards("-", "-", "-"); return; }
-    const s = await res.json();
-    const failed = s.by_status.find(x => x.status === "FAILED");
-    setCards(moneyText(s.paid.total), s.pending_approval.count, failed ? failed.count : 0);
+  function renderPaidCharts() {
+    const projects = ((paidReport && paidReport.by_project) || []).filter((row) => Number(row.total) > 0);
+    const vendors = ((paidReport && paidReport.by_vendor) || []).filter((row) => Number(row.total) > 0);
+    const money = (value) => SHELL.moneyCompact(value);
+
+    setText("paid-total", money(paidReport && paidReport.paid ? paidReport.paid.total : 0));
+    const totalEl = document.getElementById("paid-total");
+    if (totalEl) totalEl.title = SHELL.moneyExact(paidReport && paidReport.paid ? paidReport.paid.total : 0);
+    setText("paid-count", SHELL.num(paidReport && paidReport.paid ? paidReport.paid.count : 0));
+    setText("paid-projects", SHELL.num(projects.length));
+    setText("paid-vendors", SHELL.num(vendors.length));
+
+    const topProjects = projects.slice(0, 6);
+    const topVendors = vendors.slice(0, 6);
+
+    SHELL.barChart(
+      "paid-project-chart",
+      topProjects.map((row) => row.name),
+      topProjects.map((row) => Number(row.total)),
+      { label: "Paid", color: "#b0a9f9", currency: true, horizontal: true }
+    );
+    renderPaidLegend("paid-project-legend", topProjects, "#b0a9f9");
+
+    SHELL.barChart(
+      "paid-vendor-chart",
+      topVendors.map((row) => row.name),
+      topVendors.map((row) => Number(row.total)),
+      { label: "Paid", color: "#cef65f", currency: true, horizontal: true }
+    );
+    renderPaidLegend("paid-vendor-legend", topVendors, "#cef65f");
+
+    document.getElementById("report-empty").hidden = projects.length + vendors.length > 0;
   }
 
-  function fillReport(id, rows) {
-    document.getElementById(id).replaceChildren(...rows.map(r => el("tr", {},
-      el("td", { textContent: r.name }),
-      el("td", { textContent: r.count }),
-      el("td", { className: "nowrap", textContent: moneyText(r.total) }))));
-  }
-
-  async function loadPaidTables() {   // only PAID requests, optionally inside a date range
-    const f = reportForm.elements;
+  async function loadPaidReport() {
+    const fields = reportForm.elements;
     const params = new URLSearchParams({ status: "PAID" });
-    if (f.date_from.value) params.set("paid_from", f.date_from.value);
-    if (f.date_to.value) params.set("paid_to", f.date_to.value);
-    const res = await AUTH.apiFetch("/api/reports/summary/?" + params);
+    if (fields.date_from.value) params.set("paid_from", fields.date_from.value);
+    if (fields.date_to.value) params.set("paid_to", fields.date_to.value);
     const note = document.getElementById("report-note");
+
+    const res = await AUTH.apiFetch("/api/reports/summary/?" + params);
     if (!res.ok) {
-      note.textContent = res.status === 404 ? "Reports are not available on this server yet." : errorText(await readJson(res));
+      paidReport = null;
+      SHELL.clearAlert(note);
+      note.textContent = res.status === 404 ? "Reports are not available on this server yet." : SHELL.errorText(await SHELL.readJson(res));
       note.hidden = false;
-      fillReport("paid-by-project", []);
-      fillReport("paid-by-vendor", []);
-      document.getElementById("report-empty").hidden = true;
+      renderPaidCharts();
       return;
     }
-    note.hidden = true;
-    const s = await res.json();
-    fillReport("paid-by-project", s.by_project);
-    fillReport("paid-by-vendor", s.by_vendor);
-    document.getElementById("report-empty").hidden = s.by_project.length > 0;
+
+    paidReport = await res.json();
+    SHELL.clearAlert(note);
+    const scope = document.getElementById("paid-scope");
+    if (fields.date_from.value || fields.date_to.value) {
+      scope.textContent = `${fields.date_from.value || "Start"} → ${fields.date_to.value || "Today"}`;
+    } else {
+      scope.textContent = "All time";
+    }
+    renderPaidCharts();
   }
 
-  async function loadAll() {
-    try {
-      await Promise.all([loadRequests(), loadApprovalQueue(), loadFailReasons(), loadCards(), loadPaidTables()]);
-    } catch (err) {
-      console.error(err);
-      showBanner("Could not reach the server. Check your connection and reload.", true);
-    }
+  function renderAll() {
+    renderKpis();
+    renderTrend();
+    renderStatus();
     renderQueue();
     renderResults();
   }
 
-  // ---- Approve (second approvals) ----
-  async function approve(r, actions) {
-    actions.querySelectorAll("button").forEach(b => { b.disabled = true; });
+  async function loadAll() {
     try {
-      const res = await AUTH.apiFetch(`/api/payment-requests/${r.id}/approve/`, { method: "POST" });
-      const body = await readJson(res);
+      await Promise.all([
+        loadRequests(),
+        loadApprovalQueue(),
+        loadFailReasons(),
+        loadSummary(),
+        loadPaidReport(),
+      ]);
+    } catch (err) {
+      console.error(err);
+      showBanner("Could not reach the server. Check your connection and reload.", true);
+    }
+    renderAll();
+  }
+
+  /* ------------------------------------------------------------- approve */
+
+  async function approve(request, actions) {
+    actions.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+    try {
+      const res = await AUTH.apiFetch(`/api/payment-requests/${request.id}/approve/`, { method: "POST" });
+      const body = await SHELL.readJson(res);
       if (res.ok) {
         const left = (body.approval && body.approval.outstanding_levels) || [];
         showBanner(left.length
-          ? `Approved ${r.vendor_name}. Now waiting on ${left.map(l => LEVEL_NAME[l] || l).join(" and ")}.`
-          : `Approved ${r.vendor_name}. It is ready to pay.`, false);
+          ? `Approved ${request.vendor_name}. Now waiting on ${left.map((level) => LEVEL_NAME[level] || level).join(" and ")}.`
+          : `Approved ${request.vendor_name}. It is ready to pay.`, false);
       } else {
-        showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+        showBanner(res.status === 404 ? "This request is no longer available." : SHELL.errorText(body), true);
       }
     } catch (err) {
       console.error(err);
@@ -424,34 +711,39 @@
     await loadAll();   // reload either way, so the list and its buttons match what the server now says
   }
 
-  // ---- Reject (a reason is required) ----
+  /* -------------------------------------------------------------- reject */
+
   const dialog = document.getElementById("reject-dialog");
   const reasonBox = document.getElementById("reject-reason");
   let rejecting = null;
 
-  function openReject(r) {
-    rejecting = r;
-    document.getElementById("reject-target").textContent = `${r.vendor_name}, KES ${money(r.amount)}`;
+  function openReject(request) {
+    rejecting = request;
+    setText("reject-target", `${request.vendor_name}, ${SHELL.money(request.amount)}`);
     reasonBox.value = "";
     dialog.showModal();
+    window.setTimeout(() => reasonBox.focus(), 40);
   }
+
+  document.getElementById("reject-close").addEventListener("click", () => dialog.close());
   document.getElementById("reject-cancel").addEventListener("click", () => dialog.close());
-  document.getElementById("reject-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+
+  document.getElementById("reject-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
     const reason = reasonBox.value.trim();
     if (!reason || !rejecting) return;
     const target = rejecting;
-    const submit = e.target.querySelector("button[type=submit]");
+    const submit = event.target.querySelector("button[type=submit]");
     submit.disabled = true;
     try {
       const res = await AUTH.apiFetch(`/api/payment-requests/${target.id}/reject/`, {
         method: "POST",
         body: JSON.stringify({ reason }),
       });
-      const body = await readJson(res);
+      const body = await SHELL.readJson(res);
       dialog.close();
       if (res.ok) showBanner(`Rejected ${target.vendor_name}. Your reason has been recorded.`, false);
-      else showBanner(res.status === 404 ? "This request is no longer available." : errorText(body), true);
+      else showBanner(res.status === 404 ? "This request is no longer available." : SHELL.errorText(body), true);
     } catch (err) {
       console.error(err);
       dialog.close();
@@ -462,60 +754,77 @@
     await loadAll();
   });
 
-  // ---- Pay / retry ----
+  /* ------------------------------------------------------------ pay/retry */
   // One idempotency key per attempt. It is kept only while the outcome is unknown (a network error), so pressing
   // the button again replays the same attempt instead of charging twice. After a real answer, the next press is a new attempt.
-  async function pay(r, payButton) {
+  async function pay(request, payButton) {
     const label = payButton.textContent;
     payButton.disabled = true;
     payButton.textContent = "Processing...";
-    const key = pendingKeys.get(r.id) || newKey();
-    pendingKeys.set(r.id, key);
+    const key = pendingKeys.get(request.id) || newKey();
+    pendingKeys.set(request.id, key);
     const payload = { idempotency_key: key };
-    if (document.getElementById("simulate-decline").checked) payload.description = "FAIL";   // demo: the mock provider declines this attempt
+    const demo = document.getElementById("simulate-decline");
+    if (demo && demo.checked) payload.description = "FAIL";   // demo: the mock provider declines this attempt
 
     let res;
     try {
-      res = await AUTH.apiFetch(PAY_URL(r.id), { method: "POST", body: JSON.stringify(payload) });
+      res = await AUTH.apiFetch(PAY_URL(request.id), { method: "POST", body: JSON.stringify(payload) });
     } catch (err) {
       showBanner("Could not confirm whether the payment went through. Press the button again: the same attempt is reused, so it cannot be charged twice.", true);
       payButton.disabled = false;
       payButton.textContent = label;
       return;
     }
-    pendingKeys.delete(r.id);   // a real answer: the next press is a new attempt
-    const body = await readJson(res);
+    pendingKeys.delete(request.id);   // a real answer: the next press is a new attempt
+    const body = await SHELL.readJson(res);
     if (res.status === 200 || res.status === 201) {
       const earlier = body.replayed ? " (this attempt had already been sent; showing its earlier result)" : "";
-      if (body.status === "SUCCESS") showBanner(`Paid ${r.vendor_name}, KES ${money(body.amount)}.${earlier}`, false);
-      else if (body.status === "FAILED") showBanner(`Payment to ${r.vendor_name} was declined${body.provider_reason ? ": " + body.provider_reason : ""}. You can retry from the list.${earlier}`, true);
-      else showBanner(`Payment to ${r.vendor_name} is still being processed. The list updates when it finishes.${earlier}`, false);    } else {
-      showBanner(errorText(body), true);   // 403, 404, 409 (not payable, already paid, in flight), 422 or 502
+      if (body.status === "SUCCESS") showBanner(`Paid ${request.vendor_name}, ${SHELL.money(body.amount)}.${earlier}`, false);
+      else if (body.status === "FAILED") showBanner(`Payment to ${request.vendor_name} was declined${body.provider_reason ? ": " + body.provider_reason : ""}. You can retry from the list.${earlier}`, true);
+      else showBanner(`Payment to ${request.vendor_name} is still being processed. The list updates when it finishes.${earlier}`, false);
+    } else {
+      showBanner(SHELL.errorText(body), true);   // 403, 404, 409 (not payable, already paid, in flight), 422 or 502
     }
     await loadAll();
   }
 
-  // ---- Filters ----
-  filtersForm.addEventListener("input", renderResults);
-  filtersForm.addEventListener("reset", () => setTimeout(renderResults, 0));
-  filtersForm.addEventListener("submit", (e) => e.preventDefault());
-  reportForm.addEventListener("change", loadPaidTables);
-  reportForm.addEventListener("submit", (e) => e.preventDefault());
-  document.getElementById("report-clear").addEventListener("click", () => { reportForm.reset(); loadPaidTables(); });
-  document.getElementById("logout-btn").addEventListener("click", () => AUTH.logout());
+  /* -------------------------------------------------------------- wiring */
 
-  // ---- Role check: only a FINANCE user may see this page. Convenience only; the API enforces the rules. ----
-   (async () => {
+  filtersForm.addEventListener("input", SHELL.debounce(renderResults, 120));
+  filtersForm.addEventListener("reset", () => window.setTimeout(renderResults, 0));
+  filtersForm.addEventListener("submit", (event) => event.preventDefault());
+  reportForm.addEventListener("change", loadPaidReport);
+  reportForm.addEventListener("submit", (event) => event.preventDefault());
+  document.getElementById("report-clear").addEventListener("click", () => {
+    reportForm.reset();
+    loadPaidReport();
+  });
+
+  document.querySelectorAll("[data-refresh]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await loadAll();
+      button.disabled = false;
+    });
+  });
+
+  document.addEventListener("shell:tab", () => {
+    if (!requests.length && !paidReport) return;
+    renderTrend();
+    renderStatus();
+    renderPaidCharts();
+  });
+
+  // Role check: only a FINANCE user may see this page. Convenience only; the API enforces the rules.
+  (async () => {
     const me = await AUTH.requireRole(["FINANCE"]);
     if (!me) return;
     ME = me;
-    const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
-    document.getElementById("who").textContent = `${name} · Finance Officer`;
-    document.getElementById("app").hidden = false;
+    SHELL.init(me);
     if (new URLSearchParams(location.search).get("demo") === "1") document.getElementById("demo-box").hidden = false;   // demo aid: only shown when the address ends in ?demo=1
     await Promise.all([loadProjectFilter(), loadAll()]);   // the real data loads inside the guard
   })();
+})();
 </script>
-
-</body>
-</html>
+{% endblock %}

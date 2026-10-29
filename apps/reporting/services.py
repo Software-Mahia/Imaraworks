@@ -7,10 +7,12 @@ rule as the request list (visible_requests). A report can therefore never
 show a request the user couldn't open.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from django.db.models import Count, QuerySet, Sum
+from django.db.models.functions import TruncMonth
 
 from apps.payment_requests.models import PaymentRequest
 from apps.payments.models import PaymentTransaction
@@ -20,8 +22,11 @@ ZERO = Decimal('0.00')
 # "Paid on 31 October" means 31 October in Kenya, where the money moves. The
 # database stores UTC, so a payment at 01:00 on 1 November in Nairobi is
 # 22:00 on 31 October in UTC and would land in the wrong month. Kenya has no
-# daylight saving, so a fixed +3 offset is exact and needs no tz database.
-REPORT_TZ = timezone(timedelta(hours=3), 'EAT')
+# daylight saving, so this zone is a constant +3 all year. The named zone (not
+# a fixed-offset object) is what Django's database time functions accept when
+# bucketing months, and tzdata is a project dependency, so it resolves on the
+# SQLite dev database and Postgres alike.
+REPORT_TZ = ZoneInfo('Africa/Nairobi')
 
 
 def _money(value) -> str:
@@ -132,6 +137,73 @@ def totals_by_vendor(qs: QuerySet[PaymentRequest]) -> list[dict]:
     return _totals_by(qs, 'vendor')
 
 
+def _shift_month(day: date, delta: int) -> date:
+    """Move a first-of-month date by whole months, without dateutil."""
+    index = day.year * 12 + (day.month - 1) + delta
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def totals_by_month(
+    qs: QuerySet[PaymentRequest],
+    months: int = 6,
+    today: date | None = None,
+) -> list[dict]:
+    """Requests raised and money paid per month, oldest first.
+
+    Always returns exactly `months` buckets, including empty ones, so the
+    dashboard's trend line has a stable shape. Requests are bucketed by their
+    own date ("raised in October"); `paid` uses the successful payment's
+    completed_at in Kenyan time ("money moved in October"). Both series only
+    ever cover the requests in `qs`, so the caller's visibility rule still
+    applies. One query per series, not one per month.
+    """
+    if months < 1:
+        return []
+
+    today = today or datetime.now(REPORT_TZ).date()
+    first = _shift_month(today.replace(day=1), -(months - 1))
+
+    buckets = []
+    cursor = first
+    for _ in range(months):
+        key = f'{cursor.year:04d}-{cursor.month:02d}'
+        buckets.append({'month': key, 'count': 0, 'total': _money(None), 'paid_count': 0, 'paid': _money(None)})
+        cursor = _shift_month(cursor, 1)
+    by_key = {bucket['month']: bucket for bucket in buckets}
+
+    raised = (
+        qs.annotate(month=TruncMonth('date'))
+        .order_by()
+        .values('month')
+        .annotate(count=Count('id'), total=Sum('amount'))
+    )
+    for row in raised:
+        if row['month'] is None:
+            continue
+        bucket = by_key.get(row['month'].strftime('%Y-%m'))
+        if bucket is not None:
+            bucket['count'] = row['count']
+            bucket['total'] = _money(row['total'])
+
+    paid = (
+        PaymentTransaction.objects
+        .filter(status=PaymentTransaction.SUCCESS, request__in=qs)
+        .annotate(month=TruncMonth('completed_at', tzinfo=REPORT_TZ))
+        .order_by()
+        .values('month')
+        .annotate(count=Count('id'), total=Sum('amount'))
+    )
+    for row in paid:
+        if row['month'] is None:
+            continue
+        bucket = by_key.get(row['month'].strftime('%Y-%m'))
+        if bucket is not None:
+            bucket['paid_count'] = row['count']
+            bucket['paid'] = _money(row['total'])
+
+    return buckets
+
+
 def summary(qs: QuerySet[PaymentRequest]) -> dict:
     """The whole report: overall, the two figures a dashboard headlines, and the breakdowns."""
     return {
@@ -141,4 +213,5 @@ def summary(qs: QuerySet[PaymentRequest]) -> dict:
         'by_status': totals_by_status(qs),
         'by_project': totals_by_project(qs),
         'by_vendor': totals_by_vendor(qs),
+        'by_month': totals_by_month(qs),
     }

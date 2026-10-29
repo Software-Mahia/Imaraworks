@@ -1,0 +1,516 @@
+{% extends "frontend/base.html" %}
+{% load static %}
+
+{% block tabs %}
+<nav class="tabs" role="tablist" aria-label="Workspace sections">
+  <a class="tab" href="/employee/" role="tab" data-tab="employee" data-roles="EMPLOYEE">
+    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg> Requests
+  </a>
+  <a class="tab" href="/manager/" role="tab" data-tab="manager" data-roles="MANAGER">
+    <svg class="icon" aria-hidden="true"><use href="#i-check-circle"/></svg> Approvals
+  </a>
+  <a class="tab" href="/finance/" role="tab" data-tab="finance" data-roles="FINANCE">
+    <svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg> Payments
+  </a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Governance</p>
+    <h1>Every action, in <em>order</em></h1>
+    <p class="page-sub">Who did what and when. Append-only, and redacted: administrators never see amounts, vendors or reasons.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn--ghost" id="export-btn" type="button">
+      <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg> Export CSV
+    </button>
+    <button class="btn btn--tonal" id="refresh-btn" type="button">
+      <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh
+    </button>
+  </div>
+</div>
+
+<div class="alert" id="banner" role="status" hidden></div>
+
+<div class="bento" aria-label="Audit figures">
+  <article class="kpi kpi--accent col-3">
+    <div class="kpi-top">
+      <span class="kpi-label">Total events</span>
+      <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg></span>
+    </div>
+    <div class="kpi-value" id="kpi-total">—</div>
+    <div class="kpi-foot">
+      <div class="kpi-meta"><span class="kpi-note" id="kpi-total-note">Loading…</span></div>
+      <div class="spark spark--accent" id="spark-total"></div>
+    </div>
+  </article>
+
+  <article class="kpi kpi--info col-3">
+    <div class="kpi-top">
+      <span class="kpi-label">Last 7 days</span>
+      <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-activity"/></svg></span>
+    </div>
+    <div class="kpi-value" id="kpi-week">—</div>
+    <div class="kpi-foot">
+      <div class="kpi-meta"><span class="kpi-note" id="kpi-week-note">Loading…</span></div>
+      <div class="mini-bar mini-bar--info" id="bar-week"><i style="width:0%"></i></div>
+    </div>
+  </article>
+
+  <article class="kpi kpi--purple col-3">
+    <div class="kpi-top">
+      <span class="kpi-label">People involved</span>
+      <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg></span>
+    </div>
+    <div class="kpi-value" id="kpi-actors">—</div>
+    <div class="kpi-foot">
+      <div class="kpi-meta"><span class="kpi-note" id="kpi-actors-note">Loading…</span></div>
+      <div class="mini-bar mini-bar--accent" id="bar-actors"><i style="width:0%"></i></div>
+    </div>
+  </article>
+
+  <article class="kpi kpi--danger col-3">
+    <div class="kpi-top">
+      <span class="kpi-label">Sensitive events</span>
+      <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg></span>
+    </div>
+    <div class="kpi-value" id="kpi-sensitive">—</div>
+    <div class="kpi-foot">
+      <div class="kpi-meta"><span class="kpi-note" id="kpi-sensitive-note">Loading…</span></div>
+      <div class="mini-bar mini-bar--danger" id="bar-sensitive"><i style="width:0%"></i></div>
+    </div>
+  </article>
+</div>
+
+<div class="bento">
+  <section class="panel col-7">
+    <div class="panel-head">
+      <div>
+        <h3>Activity, last 7 days</h3>
+        <p>Events written to the trail each day</p>
+      </div>
+      <div class="panel-actions"><span class="pill pill--muted">Events</span></div>
+    </div>
+    <div class="chart-box"><canvas id="daily-chart" aria-label="Audit events per day" role="img"></canvas></div>
+  </section>
+
+  <section class="panel col-5">
+    <div class="panel-head">
+      <div>
+        <h3>Action mix</h3>
+        <p>What the trail is made of</p>
+      </div>
+    </div>
+    <div class="chart-box chart-box--donut">
+      <div class="donut-wrap">
+        <canvas id="action-chart" aria-label="Audit events by action" role="img"></canvas>
+        <div class="donut-center"><strong id="donut-total">0</strong><span>events</span></div>
+      </div>
+    </div>
+    <div class="legend" id="action-legend"></div>
+  </section>
+</div>
+
+<div class="bento section-gap">
+  <section class="panel col-8">
+    <div class="panel-head">
+      <div>
+        <h3>Activity feed</h3>
+        <p id="feed-count">Loading the audit trail…</p>
+      </div>
+      <div class="panel-actions">
+        <span class="pill pill--muted">
+          <svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg> Read-only
+        </span>
+      </div>
+    </div>
+
+    <div class="audit-filter">
+      <label class="search">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="audit-search" type="search" placeholder="Search actor or request #" aria-label="Search the audit trail">
+      </label>
+      <select id="scope-select" class="select select--sm" aria-label="Date range" style="width:auto">
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="all" selected>All time</option>
+      </select>
+    </div>
+
+    <div class="audit-pills" id="action-pills" aria-label="Filter by action"></div>
+
+    <div class="audit-feed" id="audit-feed"></div>
+
+    <div class="empty" id="feed-empty" hidden>
+      <div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg></div>
+      <strong>No events match those filters</strong>
+      <p>Try another action, a different date range, or clear the search.</p>
+    </div>
+
+    <div class="audit-more" id="feed-more-wrap" hidden>
+      <button class="btn btn--ghost btn--sm" id="feed-more" type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg> Show more events
+      </button>
+    </div>
+
+    <p class="panel-note" id="redaction-note">
+      Administrators see the actor, action and request number. Payment amounts, vendors and rejection reasons stay hidden.
+    </p>
+  </section>
+
+  <aside class="bento-card col-4">
+    <span class="pill pill--accent"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg> Redacted by default</span>
+    <h3 class="card-title">What you can see</h3>
+    <div class="who-grid section-gap">
+      <div class="who-row">
+        <strong>Visible</strong>
+        <span>Who acted, the action itself, the request number and the exact time.</span>
+      </div>
+      <div class="who-row">
+        <strong>Hidden</strong>
+        <span>Amounts, vendor names, payment methods and rejection reasons.</span>
+      </div>
+      <div class="who-row">
+        <strong>Export</strong>
+        <span>CSV export uses the same fields and respects the active filters.</span>
+      </div>
+    </div>
+    <div class="hero-divider"></div>
+    <p class="hero-quiet">Because the trail is append-only, this page is the long view: the record stays intact even when a request's state changes.</p>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  let ME = null;
+  let entries = [];          // newest first, from GET /api/audit/
+  let actionFilter = "";     // "" means every action
+  let limit = 40;
+
+  const banner = document.getElementById("banner");
+  const searchInput = document.getElementById("audit-search");
+  const scopeSelect = document.getElementById("scope-select");
+
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const TONE_COLOR = {
+    accent: "#6f68d8",
+    info: "#4b4b77",
+    success: "#12805c",
+    danger: "#d92d20",
+    warning: "#a96800",
+    muted: "#9897b4",
+  };
+
+  const colorFor = (action) => TONE_COLOR[SHELL.actionInfo(action).tone] || TONE_COLOR.muted;
+  const dayKey = (value) => new Date(value).toLocaleDateString("en-CA");
+
+  function setBar(id, value) {
+    const bar = document.querySelector(`#${id} > i`);
+    if (bar) bar.style.width = Math.max(0, Math.min(100, value)) + "%";
+  }
+
+  function sorted() {
+    return entries.slice().sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+  }
+
+  function weekWindow(days) {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - (days - 1));
+    return cutoff;
+  }
+
+  function lastDays(count) {
+    const days = [];
+    const now = new Date();
+    for (let i = count - 1; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      days.push({
+        key: d.toLocaleDateString("en-CA"),
+        label: d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+      });
+    }
+    return days;
+  }
+
+  /* -------------------------------------------------------------- figures */
+
+  function renderKpis() {
+    const total = entries.length;
+    const cutoff = weekWindow(7);
+    const week = entries.filter((e) => e.timestamp && new Date(e.timestamp) >= cutoff).length;
+    const actors = new Set(entries.map((e) => e.actor_username || "system"));
+    const sensitive = entries.filter((e) => e.action === "REJECTED" || e.action === "PAYMENT_FAILED").length;
+    const first = sorted()[total - 1];
+
+    document.getElementById("kpi-total").textContent = SHELL.num(total);
+    document.getElementById("kpi-total-note").textContent = first
+      ? `Since ${SHELL.shortDate(first.timestamp)}`
+      : "Nothing recorded yet";
+
+    const days = lastDays(14);
+    const byDay = {};
+    days.forEach((day) => { byDay[day.key] = 0; });
+    entries.forEach((e) => {
+      if (!e.timestamp) return;
+      const key = dayKey(e.timestamp);
+      if (key in byDay) byDay[key] += 1;
+    });
+    SHELL.sparkline(document.getElementById("spark-total"), days.map((day) => byDay[day.key]), "accent");
+
+    document.getElementById("kpi-week").textContent = SHELL.num(week);
+    document.getElementById("kpi-week-note").textContent = total
+      ? `${Math.round((week / total) * 100)}% of all recorded events`
+      : "No events yet";
+    setBar("bar-week", total ? (week / total) * 100 : 0);
+
+    document.getElementById("kpi-actors").textContent = SHELL.num(actors.size);
+    document.getElementById("kpi-actors-note").textContent = actors.size
+      ? `${actors.size === 1 ? "One account" : "Accounts"} written to the trail`
+      : "No actors yet";
+    setBar("bar-actors", total ? (actors.size / total) * 100 : 0);
+
+    document.getElementById("kpi-sensitive").textContent = SHELL.num(sensitive);
+    document.getElementById("kpi-sensitive-note").textContent = sensitive
+      ? "Rejections and failed payments"
+      : "No rejections or failures";
+    setBar("bar-sensitive", total ? (sensitive / total) * 100 : 0);
+  }
+
+  function renderDaily() {
+    const days = lastDays(7);
+    const byDay = {};
+    days.forEach((day) => { byDay[day.key] = 0; });
+    entries.forEach((e) => {
+      if (!e.timestamp) return;
+      const key = dayKey(e.timestamp);
+      if (key in byDay) byDay[key] += 1;
+    });
+
+    SHELL.barChart(
+      "daily-chart",
+      days.map((day) => day.label),
+      days.map((day) => byDay[day.key]),
+      { label: "Events", color: "#b0a9f9", suffix: "events" }
+    );
+  }
+
+  function renderActionMix() {
+    const counts = {};
+    entries.forEach((e) => { counts[e.action] = (counts[e.action] || 0) + 1; });
+    const rows = Object.keys(counts)
+      .map((action) => ({
+        action,
+        label: SHELL.actionInfo(action).label,
+        count: counts[action],
+        color: colorFor(action),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    SHELL.doughnutChart(
+      "action-chart",
+      rows.map((row) => row.label),
+      rows.map((row) => row.count),
+      rows.map((row) => row.color)
+    );
+    document.getElementById("donut-total").textContent = SHELL.num(entries.length);
+
+    document.getElementById("action-legend").replaceChildren(...rows.map((row) => {
+      const item = el("span", "legend-item");
+      const dot = el("i", "legend-dot");
+      dot.style.background = row.color;
+      item.append(dot, el("span", null, row.label), el("strong", null, SHELL.num(row.count)));
+      return item;
+    }));
+  }
+
+  /* --------------------------------------------------------------- filters */
+
+  function renderActionPills() {
+    const counts = {};
+    entries.forEach((e) => { counts[e.action] = (counts[e.action] || 0) + 1; });
+    const rows = Object.keys(counts)
+      .map((action) => ({ action, count: counts[action], label: SHELL.actionInfo(action).label }))
+      .sort((a, b) => b.count - a.count);
+
+    const pills = [pill("All actions", entries.length, "")];
+    rows.forEach((row) => pills.push(pill(row.label, row.count, row.action)));
+    document.getElementById("action-pills").replaceChildren(...pills);
+  }
+
+  function pill(label, count, action) {
+    const button = el("button", "pill pill--click" + (actionFilter === action ? " is-active" : ""));
+    button.type = "button";
+    button.append(document.createTextNode(label), el("strong", null, SHELL.num(count)));
+    button.addEventListener("click", () => {
+      actionFilter = action;
+      limit = 40;
+      renderActionPills();
+      renderFeed();
+    });
+    return button;
+  }
+
+  function filtered() {
+    const needle = searchInput.value.trim().toLowerCase();
+    const scope = scopeSelect.value;
+    const cutoff = scope === "all" ? null : weekWindow(Number(scope));
+
+    return sorted().filter((entry) => {
+      if (actionFilter && entry.action !== actionFilter) return false;
+      if (cutoff && (!entry.timestamp || new Date(entry.timestamp) < cutoff)) return false;
+      if (!needle) return true;
+      const haystack = [
+        entry.actor_username,
+        entry.action,
+        SHELL.actionInfo(entry.action).label,
+        entry.request == null ? "" : "request #" + entry.request,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(needle);
+    });
+  }
+
+  function renderFeed() {
+    const rows = filtered();
+    const shown = rows.slice(0, limit);
+
+    document.getElementById("audit-feed").replaceChildren(...shown.map((entry) => {
+      const info = SHELL.actionInfo(entry.action);
+      const row = el("div", "audit-row");
+
+      const dot = el("span", "timeline-dot timeline-dot--" + info.tone);
+      dot.append(SHELL.icon(info.icon));
+
+      const main = el("div", "audit-main");
+      const top = el("div", "audit-top");
+      top.append(el("strong", null, info.label));
+      top.append(el("span", "pill " + (entry.request == null ? "pill--purple" : "pill--muted"),
+        entry.request == null ? "System event" : "Request #" + entry.request));
+
+      const meta = el("div", "audit-meta");
+      meta.append(SHELL.icon("user"), document.createTextNode(entry.actor_username || "system"));
+      meta.append(el("span", null, "·"));
+      meta.append(SHELL.icon("clock"), document.createTextNode(SHELL.dateTime(entry.timestamp)));
+
+      main.append(top, meta);
+
+      const time = el("div", "audit-time");
+      const relative = el("strong", null, SHELL.relative(entry.timestamp));
+      relative.title = SHELL.dateTime(entry.timestamp);
+      time.append(relative, document.createTextNode(SHELL.shortDate(entry.timestamp)));
+
+      row.append(dot, main, time);
+      return row;
+    }));
+
+    document.getElementById("feed-empty").hidden = rows.length > 0;
+    document.getElementById("feed-more-wrap").hidden = rows.length <= limit;
+    document.getElementById("feed-count").textContent = entries.length
+      ? `${rows.length} of ${entries.length} event${entries.length === 1 ? "" : "s"}`
+      : "No events yet";
+    document.getElementById("redaction-note").hidden = entries.length === 0;
+  }
+
+  function renderAll() {
+    renderKpis();
+    renderDaily();
+    renderActionMix();
+    renderActionPills();
+    renderFeed();
+  }
+
+  /* --------------------------------------------------------------- loading */
+
+  async function loadAudit() {
+    const res = await AUTH.apiFetch("/api/audit/");
+    if (res.status === 403) {
+      SHELL.alert(banner, "This account is not allowed to read the audit trail.", "error");
+      return false;
+    }
+    if (!res.ok) {
+      SHELL.alert(banner, "Could not load the audit trail. Reload the page to try again.", "error");
+      return false;
+    }
+    const body = await res.json();
+    entries = Array.isArray(body) ? body : [];
+    SHELL.clearAlert(banner);
+    return true;
+  }
+
+  /* ------------------------------------------------------------------- csv */
+
+  function csvCell(value) {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  function exportCsv() {
+    const rows = filtered();
+    if (!rows.length) {
+      SHELL.toast("There is nothing to export with these filters.", "info");
+      return;
+    }
+    const lines = [["timestamp", "action", "actor_username", "request"].map(csvCell).join(",")];
+    rows.forEach((entry) => {
+      lines.push([entry.timestamp, entry.action, entry.actor_username, entry.request].map(csvCell).join(","));
+    });
+
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `audit-trail-${new Date().toLocaleDateString("en-CA")}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    SHELL.toast(`Exported ${rows.length} event${rows.length === 1 ? "" : "s"}.`, "success");
+  }
+
+  /* ---------------------------------------------------------------- wiring */
+
+  searchInput.addEventListener("input", SHELL.debounce(() => {
+    limit = 40;
+    renderFeed();
+  }, 140));
+  scopeSelect.addEventListener("change", () => {
+    limit = 40;
+    renderFeed();
+  });
+  document.getElementById("feed-more").addEventListener("click", () => {
+    limit += 40;
+    renderFeed();
+  });
+  document.getElementById("export-btn").addEventListener("click", exportCsv);
+  document.getElementById("refresh-btn").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    if (await loadAudit()) {
+      renderAll();
+      SHELL.toast("Audit trail refreshed.", "success");
+    }
+    button.disabled = false;
+  });
+
+  // Admins can read the redacted trail. Convenience only:
+  // /api/audit/ enforces the same rule and redacts the payload.
+  (async () => {
+    const me = await AUTH.requireRole(["ADMIN"]);
+    if (!me) return;
+    ME = me;
+    SHELL.init(me);
+    if (await loadAudit()) renderAll();
+  })();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}ImaraWorks · Vendor payments{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'frontend/app.css' %}">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+{% include "frontend/_icons.html" %}
+
+<header class="app-header">
+  <div class="app-bar">
+    <a class="brand" href="/login/" aria-label="ImaraWorks home">
+      <span class="brand-mark"><img src="{% static 'frontend/boot.png' %}" alt="" width="26" height="26"></span>
+      <span class="brand-text"><span>ImaraWorks</span><small>Vendor payments</small></span>
+    </a>
+
+    <div class="app-bar__tabs">
+      {% block tabs %}{% endblock %}
+    </div>
+
+    <div class="app-bar__actions">
+      <span class="date-pill">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="#i-calendar"/></svg>
+        <span id="today-label">—</span>
+      </span>
+
+      <a class="nav-link nav-bar-link" href="/audit/" role="menuitem" data-roles="ADMIN" data-nav="audit">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="#i-shield"/></svg> Audit trail
+      </a>
+
+      <button class="nav-link nav-link--danger nav-bar-link" id="logout-btn" type="button" role="menuitem" style="color: var(--danger);">
+        <svg class="icon icon--sm" aria-hidden="true" style="color: var(--danger);"><use href="#i-logout"/></svg> Sign out
+      </button>
+
+      <button class="nav-link nav-bar-link" id="guide-btn" type="button" role="menuitem" data-roles="EMPLOYEE,MANAGER,FINANCE">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="#i-book"/></svg> Guide
+      </button>
+
+      <div class="user-chip" id="user-chip">
+        <img class="avatar" id="topbar-avatar" src="" alt="" width="34" height="34">
+        <span class="user-chip__meta">
+          <strong id="topbar-name">Signed in</strong>
+          <small id="topbar-role">—</small>
+        </span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="guide-modal" id="guide-modal" hidden>
+  <div class="modal-content guide-modal-content">
+    <button class="icon-btn modal-close" id="guide-close" type="button" aria-label="Close">
+      <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+    <p class="eyebrow">Guide</p>
+    <h2>From invoice to <em>paid</em>, in three moves.</h2>
+    <p class="guide-modal-lede">One request, one approval chain, one payment. Every step is appended to the audit trail.</p>
+    <div class="guide-modal-steps">
+      <div class="guide-modal-step">
+        <span class="guide-modal-index">1</span>
+        <div>
+          <h3>Raise the request</h3>
+          <p>Choose the vendor, project and amount, then submit it for approval.</p>
+        </div>
+      </div>
+      <div class="guide-modal-step">
+        <span class="guide-modal-index">2</span>
+        <div>
+          <h3>Collect sign-off</h3>
+          <p>A manager approves, and Finance adds a second approval when the amount needs one.</p>
+        </div>
+      </div>
+      <div class="guide-modal-step">
+        <span class="guide-modal-index">3</span>
+        <div>
+          <h3>Finance pays</h3>
+          <p>Once every required level signs off, Finance sends the payment. A declined attempt can be retried.</p>
+        </div>
+      </div>
+    </div>
+    <div class="guide-modal-rule">
+      <strong>Two approval tiers</strong>
+      <p>A manager always approves. Above the limit, Finance approves too — in either order — and Finance pays both routes.</p>
+      <span class="pill pill--accent">Manager limit KES 50,000</span>
+    </div>
+  </div>
+</div>
+
+<main class="content" id="page" hidden>
+  {% block content %}{% endblock %}
+</main>
+
+<div class="drawer-scrim" id="drawer-scrim" hidden></div>
+<aside class="drawer" id="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+  <div class="drawer-head">
+    <div>
+      <h2 id="drawer-title">Request history</h2>
+      <p id="drawer-subtitle">Audit trail</p>
+    </div>
+    <button class="icon-btn modal-close" id="drawer-close" type="button" aria-label="Close">
+      <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+
+<script src="{% static 'frontend/auth.js' %}"></script>
+<script src="{% static 'frontend/vendor/chart.umd.min.js' %}"></script>
+<script src="{% static 'frontend/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>
