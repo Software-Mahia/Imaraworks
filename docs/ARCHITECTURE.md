@@ -8,7 +8,7 @@ ImaraWorks is a vendor payment and approval system (KamiLimu ICT Track case stud
 
 ## Stack
 
-Django 5.2 + Django REST Framework + SimpleJWT (auth), WhiteNoise (static files with DEBUG off), SQLite locally / Postgres on the server (`DATABASE_URL`), server-rendered frontend pages with vanilla JS, GitHub Actions CI, Render Blueprint for the deployed demo, Docker/Compose for local development, Python 3.14.
+Django 5.2 + Django REST Framework + SimpleJWT (auth), WhiteNoise (static files with DEBUG off), SQLite locally / Postgres on the server (`DATABASE_URL`), server-rendered frontend pages with vanilla JS, GitHub Actions CI, Render Blueprint for the deployed demo, Docker/Compose for local development, Python 3.12.
 
 ## Apps
 
@@ -21,7 +21,7 @@ Django 5.2 + Django REST Framework + SimpleJWT (auth), WhiteNoise (static files 
 | `apps.payments` | Gateway adapter + mock provider, transaction lifecycle, pay endpoints |
 | `apps.audit` | Append-only audit log: per-request history + ADMIN audit view |
 | `apps.reporting` | Summary totals with role-scoped filters |
-| `frontend` | HTML pages (`/login/`, `/employee/`, `/manager/`, `/finance/`) + JS (JWT auth, role guard) |
+| `frontend` | HTML pages (`/login/`, `/employee/`, `/manager/`, `/finance/`, `/audit/`) + JS (JWT auth, role guard) |
 | `imaraworks` | Settings split (`base` / `dev` / `prod`), env rules (`env.py`) |
 
 Views only translate HTTP ⇄ a `services.py` call; every business rule lives in a service or `logic.py`.
@@ -78,7 +78,7 @@ The host uses two unauthenticated endpoints (issue #27), both exempt from the HT
 
 ## Deployment and Docker
 
-- **Render (deployed demo)**: `render.yaml` creates the Postgres database and the web service together, wires `DATABASE_URL`, runs `collectstatic` at build time, migrates in `preDeployCommand`, and health-checks `/health/`.
+- **Render (deployed demo)**: `render.yaml` creates the Postgres database and the web service together, wires `DATABASE_URL`, runs `collectstatic` at build time, then runs migrations and `seed_users` in `startCommand` before starting Gunicorn, and health-checks `/health/`.
 - **Docker (local development)**: `Dockerfile` builds a non-root image; `entrypoint.sh` applies migrations on start (and seeds demo users when `SEED_USERS=1`); `docker-compose.yml` runs the dev settings with SQLite on the `sqlite_data` volume. Variables are documented in `.env.example`.
 
 ## Storage

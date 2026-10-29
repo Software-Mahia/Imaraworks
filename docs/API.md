@@ -224,7 +224,7 @@ Only the person who created the request can change its amount, whatever their ro
 | Status before | What happens |
 |---|---|
 | `DRAFT`, `SUBMITTED` | Amount changes, status stays the same |
-| `PENDING_APPROVAL`, `APPRODED?` wait — `APPROVED` | Amount changes, **every approval so far stops counting** (even for a decrease), status goes to `PENDING_APPROVAL`. The levels are recalculated from the new amount, so 42,000 → 67,000 now needs finance too. |
+| `PENDING_APPROVAL`, `APPROVED` | Amount changes, **every approval so far stops counting** (even for a decrease), status goes to `PENDING_APPROVAL`. The levels are recalculated from the new amount, so 42,000 → 67,000 now needs finance too. |
 | anything else | `409`, the amount is locked |
 
 Sending the amount it already has changes nothing and writes no history entry.
@@ -241,11 +241,11 @@ You can see a request's history exactly when you can see the request (see "Who s
   {"id": 4, "action": "APPROVED", "actor_username": "carol", "details": {"level": "manager", "amount": "67000", "fully_approved": false}, "timestamp": "..."}
 ]
 ```
-- `action` is `CREATED`, `SUBMITTED`, `APPRODED`, `REJECTED`, `AMOUNT_CHANGED`, `PAYMENT_STARTED`, `PAID`, `PAYMENT_FAILED`.
+- `action` is `CREATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `AMOUNT_CHANGED`, `PAYMENT_STARTED`, `PAID`, `PAYMENT_FAILED`.
 - `details` depends on the action: `SUBMITTED` has `amount` and `required_levels`, `REJECTED` has `reason`, and `AMOUNT_CHANGED` has `old_amount`, `new_amount` and `retiered`.
 
 ### GET /api/audit/
-ADMIN only, read-only. Admins can't see payment requests or payment data, so they see who did what and when, but not `details` (amounts, vendors, rejection reasons). Every other role gets `403`. Newest first.
+ADMIN only, read-only. Admins cannot see payment data here, so they see who did what and when, but not `details` (amounts, vendors, rejection reasons). Every other role gets `403`. Newest first.
 ```json
 [
   {"id": 4, "action": "APPROVED", "actor_username": "carol", "timestamp": "...", "request": 12}

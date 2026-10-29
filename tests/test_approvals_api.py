@@ -1,4 +1,4 @@
-"""HTTP tests for the approvals endpoints (docs/APPROVALS_API.md).
+"""HTTP tests for the approvals endpoints (docs/API.md).
 
 The rules are tested in the service tests. These check the HTTP layer: routes,
 status codes, response shapes, and that each refusal maps to the documented code.

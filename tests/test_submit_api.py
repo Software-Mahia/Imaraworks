@@ -1,4 +1,4 @@
-"""HTTP tests for POST /api/payment-requests/<id>/submit/ (docs/APPROVALS_API.md).
+"""HTTP tests for POST /api/payment-requests/<id>/submit/ (docs/API.md).
 
 The rules are tested in test_submit_decision.py and the saving in
 test_submit_action.py. These check the HTTP layer: the route, each refusal's

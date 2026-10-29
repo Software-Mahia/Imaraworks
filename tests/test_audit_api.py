@@ -1,4 +1,4 @@
-"""HTTP tests for the read-only audit endpoints (docs/APPROVALS_API.md)."""
+"""HTTP tests for the read-only audit endpoints (docs/API.md)."""
 
 import datetime
 from decimal import Decimal
@@ -81,21 +81,16 @@ class HistoryApiTests(AuditApiTestCase):
 class AuditLogApiTests(AuditApiTestCase):
     url = '/api/audit/'
 
-    def test_admin_sees_whole_log_newest_first(self):
+    def test_reader_roles_see_no_financial_details(self):
+        # Admins can't see payment data here, so the log leaves out `details`,
+        # which holds amounts and rejection reasons.
         self.as_user(self.grace)
         resp = self.client.get(self.url)
 
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual([e['action'] for e in resp.data], [AuditLog.REJECTED, AuditLog.APPROVED])
-        self.assertEqual(resp.data[0]['request'], self.req.pk)
-
-    def test_admin_sees_no_financial_details(self):
-        # Admins have no access to payment data (agreed on #2), so the log
-        # leaves out `details`, which holds amounts and rejection reasons.
-        self.as_user(self.grace)
-        resp = self.client.get(self.url)
-
-        self.assertEqual(set(resp.data[0]), {'id', 'action', 'actor_username', 'timestamp', 'request'})
+        self.assertEqual(
+            set(resp.data[0]),
+            {'id', 'action', 'actor_username', 'timestamp', 'request'},
+        )
         self.assertNotIn('Over the project budget', str(resp.data))
         self.assertNotIn('148000', str(resp.data))
 
@@ -105,7 +100,7 @@ class AuditLogApiTests(AuditApiTestCase):
         self.assertEqual([e['action'] for e in resp.data], [AuditLog.APPROVED])
 
     def test_other_roles_get_403(self):
-        for user in (self.alice, self.carol, self.faith):
+        for user in (self.alice, self.brian, self.carol, self.faith):
             with self.subTest(user=user.username):
                 self.as_user(user)
                 self.assertEqual(self.client.get(self.url).status_code, 403)

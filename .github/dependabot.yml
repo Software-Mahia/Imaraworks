@@ -22,14 +22,3 @@ updates:
     allow:
       - dependency-type: "direct"
       - dependency-type: "indirect"
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-      time: "04:00"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "frontend"
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"

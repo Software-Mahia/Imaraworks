@@ -1,4 +1,4 @@
-"""HTTP endpoints for approvals. See docs/APPROVALS_API.md.
+"""HTTP endpoints for approvals. See docs/API.md.
 
 These views only translate: HTTP in, a services.py call, HTTP out. Every
 approval rule lives in logic.py / services.py (golden rule 2).
